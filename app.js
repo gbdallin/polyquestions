@@ -439,6 +439,7 @@
       status.style.display = 'inline';
       status.textContent = 'Saved.';
       setTimeout(() => { status.style.display = 'none'; }, 2000);
+      if (window.polyculeSaveToCloudIfSession) window.polyculeSaveToCloudIfSession();
     });
 
     document.querySelectorAll('nav button[data-view]').forEach((btn) => {

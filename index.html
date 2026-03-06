@@ -365,6 +365,25 @@
     #cloud-bar button:hover { border-color: var(--accent); color: var(--accent); }
     #cloud-link-wrap { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
     #cloud-link-wrap input { max-width: 320px; }
+    #code-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    #code-bar .code-label { color: var(--muted); font-size: 0.9rem; }
+    #code-bar .code-value { font-size: 1.1rem; letter-spacing: 0.15em; color: var(--accent); }
+    #code-bar .code-copy-btn { margin-left: 0.5rem; padding: 0.35rem 0.6rem; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+    #code-bar #code-input { width: 6ch; font-family: var(--font-sans); font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+    #code-bar #btn-code-go { padding: 0.4rem 0.75rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font-sans); cursor: pointer; }
+    #code-bar #btn-code-go:hover { border-color: var(--accent); color: var(--accent); }
+    #code-bar .code-enter-label { color: var(--muted); font-size: 0.9rem; }
+    #code-display-wrap { display: none; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
   </style>
 </head>
 <body>
@@ -372,6 +391,13 @@
     <h1>Polycule Expectations</h1>
     <p class="subtitle">Questionnaire → Compare → Relationship contract. Data stays on this device.</p>
     <div id="shared-session-banner" aria-live="polite"></div>
+    <div id="code-bar" style="display:none;">
+      <button type="button" id="btn-start-new">Start new (get code)</button>
+      <span class="code-enter-label">or enter code:</span>
+      <input type="text" id="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" />
+      <button type="button" id="btn-code-go">Join / Open</button>
+      <div id="code-display-wrap"></div>
+    </div>
     <div id="cloud-bar">
       <button type="button" id="btn-save-to-cloud">Create shared link (save to cloud)</button>
       <div id="cloud-link-wrap"></div>
