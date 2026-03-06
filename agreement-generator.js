@@ -212,6 +212,7 @@ var AgreementGenerator = (function () {
       // Don't repeat Q50 (commitment) in Values section; it's in Definitions above
       if (sec.id === 'values') questions = questions.filter(function (q) { return q.id !== 50; });
       if (!questions.length) return;
+      if (!summaryForPartner(answers.A, questions) && !summaryForPartner(answers.B, questions)) return;
       var c = contract[sec.id] || {};
       var agreementType = c.agreement || 'discuss';
       var notes = c.notes || '';

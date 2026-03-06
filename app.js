@@ -266,20 +266,24 @@
       return;
     }
 
+    function sectionHasAnyAnswer(questions, ansA, ansB) {
+      for (var i = 0; i < questions.length; i++) {
+        var name = 'q' + questions[i].id;
+        var vA = ansA[name] && (ansA[name].value !== undefined ? ansA[name].value : ansA[name]);
+        var vB = ansB[name] && (ansB[name].value !== undefined ? ansB[name].value : ansB[name]);
+        var hasA = vA != null && (typeof vA !== 'string' || vA.trim() !== '');
+        var hasB = vB != null && (typeof vB !== 'string' || vB.trim() !== '');
+        if (hasA || hasB) return true;
+      }
+      return false;
+    }
+
     var recommendations = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations
       ? AgreementGenerator.getRecommendations(answers.A, answers.B)
       : {};
     var getLongform = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendationLongform
       ? AgreementGenerator.getRecommendationLongform
       : function () { return ''; };
-
-    for (var secId in recommendations) {
-      var c = contract[secId] || {};
-      if (!c.agreement) {
-        saveContractSection(secId, recommendations[secId], c.notes || '', c.discussionOutcome || '');
-      }
-    }
-    contract = getContract();
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
@@ -289,14 +293,37 @@
       if (sectionOrder.indexOf(q.section) === -1) sectionOrder.push(q.section);
     });
 
+    var hasIncompleteSection = false;
+    sectionOrder.forEach(function (secId) {
+      var questions = sorted.filter(function (q) { return q.section === secId; });
+      if (questions.length && !sectionHasAnyAnswer(questions, answers.A, answers.B)) hasIncompleteSection = true;
+    });
+
+    for (var secId in recommendations) {
+      var questionsForSec = sorted.filter(function (q) { return q.section === secId; });
+      if (!sectionHasAnyAnswer(questionsForSec, answers.A, answers.B)) continue;
+      var c = contract[secId] || {};
+      if (!c.agreement) {
+        saveContractSection(secId, recommendations[secId], c.notes || '', c.discussionOutcome || '');
+      }
+    }
+    contract = getContract();
+
     var html = '';
+    if (hasIncompleteSection) {
+      html += '<p class="contract-incomplete-banner">Some questions are still unanswered. Sections with no answers yet are marked below; you can still view and edit the rest of the contract.</p>';
+    }
     sectionOrder.forEach(function (secId) {
       var questions = sorted.filter(function (q) { return q.section === secId; });
       if (!questions.length) return;
+      var sectionLabel = sectionLabels[secId] || secId;
+      if (!sectionHasAnyAnswer(questions, answers.A, answers.B)) {
+        html += '<div class="contract-section contract-section-incomplete" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabel) + '</h3><p class="contract-section-placeholder">This section still needs both partners to complete their answers in the Questionnaire tab.</p></div>';
+        return;
+      }
       var secContract = contract[secId] || {};
       var recommended = recommendations[secId] || 'discuss';
       var agree = secContract.agreement || recommended;
-      var sectionLabel = sectionLabels[secId] || secId;
       var longform = getLongform(sectionLabel, questions, answers.A, answers.B, agree, labelA, labelB);
 
       var qaRows = '';
@@ -318,9 +345,10 @@
     });
     container.innerHTML = html;
 
-    container.querySelectorAll('.contract-section').forEach((block) => {
-      const sectionId = block.dataset.section;
-      const radios = block.querySelectorAll('input[name="contract_' + sectionId + '"]');
+    container.querySelectorAll('.contract-section').forEach(function (block) {
+      var sectionId = block.dataset.section;
+      if (block.classList.contains('contract-section-incomplete')) return;
+      var radios = block.querySelectorAll('input[name="contract_' + sectionId + '"]');
       var notesEl = block.querySelector('textarea[data-notes]');
       function saveSection() {
         var checked = block.querySelector('input[name="contract_' + sectionId + '"]:checked');
@@ -497,14 +525,23 @@
     document.getElementById('name-a').addEventListener('change', saveNames);
     document.getElementById('name-b').addEventListener('change', saveNames);
 
-    document.getElementById('btn-save').addEventListener('click', () => {
+    document.getElementById('btn-save').addEventListener('click', function () {
       saveNames();
-      const data = collectFormData();
+      var data = collectFormData();
       saveAnswers(currentPartner, data);
-      const status = document.getElementById('save-status');
-      status.style.display = 'inline';
-      status.textContent = 'Saved.';
-      setTimeout(() => { status.style.display = 'none'; }, 2000);
+      var unanswered = 0;
+      QUESTIONS.forEach(function (q) {
+        var name = 'q' + q.id;
+        var v = data[name];
+        var val = v && (v.value !== undefined ? v.value : v);
+        if (val == null || (typeof val === 'string' && val.trim() === '')) unanswered++;
+      });
+      var status = document.getElementById('save-status');
+      if (status) {
+        status.style.display = 'inline';
+        status.textContent = 'Saved.' + (unanswered > 0 ? ' ' + unanswered + ' question(s) still unanswered—you can complete them later.' : '');
+        setTimeout(function () { status.style.display = 'none'; }, unanswered > 0 ? 5000 : 2000);
+      }
       if (window.polyculeSaveToCloudIfSession) window.polyculeSaveToCloudIfSession();
     });
 
