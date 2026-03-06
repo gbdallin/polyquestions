@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polycule Expectations — Questionnaire & Contract</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --surface: #18181d;
+      --border: #2a2a32;
+      --text: #e8e6e3;
+      --muted: #9b9893;
+      --accent: #c4a574;
+      --accent-soft: rgba(196, 165, 116, 0.15);
+      --success: #7a9e7a;
+      --warning: #c4a574;
+      --radius: 10px;
+      --font-sans: 'DM Sans', system-ui, sans-serif;
+      --font-serif: 'Fraunces', Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      padding-bottom: 4rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem 0;
+      color: var(--text);
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+    nav button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+    }
+    nav button:hover { border-color: var(--accent); color: var(--accent); }
+    nav button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .view { display: none; }
+    .view.active { display: block; }
+    .form-chooser {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .form-chooser label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .form-chooser input[type="radio"] { accent-color: var(--accent); }
+    .form-chooser .name-input { margin-left: 0.5rem; }
+    .form-chooser .name-input input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      width: 160px;
+    }
+    .form-chooser .name-input input::placeholder { color: var(--muted); }
+    .section-block {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .section-block h2 {
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      margin: 0 0 1rem 0;
+      color: var(--accent);
+    }
+    .q-block { margin-bottom: 1.25rem; }
+    .q-block:last-child { margin-bottom: 0; }
+    .q-block label { display: block; margin-bottom: 0.4rem; font-weight: 500; color: var(--text); }
+    .q-block .q-text { font-size: 0.95rem; }
+    .q-block .options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-top: 0.35rem;
+    }
+    .q-block .options label {
+      font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+    }
+    .q-block .options input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; }
+    .q-block textarea {
+      width: 100%;
+      min-height: 80px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.6rem;
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      resize: vertical;
+    }
+    .q-block textarea::placeholder { color: var(--muted); }
+    .q-block .notes {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .q-block .notes input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .save-bar {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 1rem 0;
+      margin: 2rem -1.5rem 0;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+    .save-bar button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.6rem 1.25rem;
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .save-bar button:hover { filter: brightness(1.1); }
+    .save-bar .saved { color: var(--success); font-size: 0.9rem; margin-left: 0.75rem; }
+    .compare-intro { margin-bottom: 1.5rem; color: var(--muted); font-size: 0.95rem; }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .compare-table th, .compare-table td {
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .compare-table th {
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 500;
+      width: 28%;
+    }
+    .compare-table th.partner-a { color: var(--accent); }
+    .compare-table th.partner-b { color: var(--accent); }
+    .compare-table td.answer { max-width: 0; word-wrap: break-word; }
+    .compare-table .section-row td {
+      font-family: var(--font-serif);
+      color: var(--accent);
+      font-weight: 600;
+      padding-top: 1rem;
+    }
+    .compare-table .section-row td:first-child { padding-left: 0.75rem; }
+    .compare-empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .contract-intro { margin-bottom: 1.5rem; color: var(--muted); font-size: 0.95rem; }
+    .contract-section {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .contract-section h3 { font-family: var(--font-serif); font-size: 1rem; margin: 0 0 0.75rem 0; color: var(--accent); }
+    .contract-section .answers-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .contract-section .answers-summary .col { padding: 0.5rem; background: var(--bg); border-radius: 6px; }
+    .contract-section .answers-summary .col strong { display: block; margin-bottom: 0.35rem; color: var(--muted); font-size: 0.8rem; }
+    .contract-section .agreement-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .contract-section .agreement-row label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 400; }
+    .contract-section .agreement-row input[type="radio"] { accent-color: var(--accent); }
+    .contract-section .agreement-notes {
+      margin-top: 0.5rem;
+    }
+    .contract-section .agreement-notes textarea {
+      width: 100%;
+      min-height: 60px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    .contract-section .discussion-outcome {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .contract-section .discussion-outcome .outcome-label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .contract-section .discussion-outcome textarea {
+      width: 100%;
+      min-height: 56px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem;
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    .contract-empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .export-bar { margin-top: 2rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .export-bar button {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      cursor: pointer;
+    }
+    .export-bar button:hover { border-color: var(--accent); color: var(--accent); }
+    .export-bar button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    #contract-doc {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      white-space: pre-wrap;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    #contract-doc h2 { font-family: var(--font-serif); font-size: 1rem; margin: 1rem 0 0.5rem 0; color: var(--accent); }
+    #contract-doc h2:first-child { margin-top: 0; }
+    .no-data-msg { color: var(--muted); font-style: italic; }
+    .recommend-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+    }
+    .recommend-bar .recommend-label { color: var(--accent); font-size: 0.9rem; }
+    .recommend-bar button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .recommend-bar button:hover { filter: brightness(1.1); }
+    .contract-section .recommended { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
+    .file-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .file-bar button {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .file-bar button:hover { border-color: var(--accent); color: var(--accent); }
+    .file-bar-hint { font-size: 0.8rem; color: var(--muted); }
+    #shared-session-banner {
+      display: none;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+    }
+    #shared-session-banner .shared-msg { margin: 0 0 0.5rem 0; color: var(--accent); font-weight: 500; }
+    #shared-session-banner .shared-hint { margin: 0 0 0.75rem 0; font-size: 0.9rem; color: var(--muted); }
+    #shared-session-banner .shared-err { margin: 0; color: var(--muted); }
+    #shared-session-banner .shared-btn { margin-right: 0.5rem; margin-top: 0.25rem; padding: 0.4rem 0.75rem; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; font-family: var(--font-sans); cursor: pointer; }
+    #shared-session-banner .shared-btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    #cloud-bar {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    #cloud-bar button { padding: 0.4rem 0.75rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font-sans); font-size: 0.85rem; cursor: pointer; }
+    #cloud-bar button:hover { border-color: var(--accent); color: var(--accent); }
+    #cloud-link-wrap { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    #cloud-link-wrap input { max-width: 320px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Polycule Expectations</h1>
+    <p class="subtitle">Questionnaire → Compare → Relationship contract. Data stays on this device.</p>
+    <div id="shared-session-banner" aria-live="polite"></div>
+    <div id="cloud-bar">
+      <button type="button" id="btn-save-to-cloud">Create shared link (save to cloud)</button>
+      <div id="cloud-link-wrap"></div>
+    </div>
+    <div class="file-bar">
+      <button type="button" id="btn-save-session">Save session to file</button>
+      <button type="button" id="btn-load-session">Load session from file</button>
+      <input type="file" id="input-load-session" accept=".polycule,.json" style="display:none;" />
+      <span class="file-bar-hint">One file = one pair. Save to a dedicated folder to revisit or share.</span>
+    </div>
+    <nav>
+      <button type="button" data-view="form" class="active">Questionnaire</button>
+      <button type="button" data-view="compare">Compare answers</button>
+      <button type="button" data-view="contract">Relationship contract</button>
+    </nav>
+    <div id="view-form" class="view active">
+      <div class="form-chooser">
+        <label><input type="radio" name="who" value="A" checked /> Partner A</label>
+        <span class="name-input"><input type="text" id="name-a" placeholder="Name (optional)" /></span>
+        <label><input type="radio" name="who" value="B" /> Partner B</label>
+        <span class="name-input"><input type="text" id="name-b" placeholder="Name (optional)" /></span>
+      </div>
+      <div id="form-content"></div>
+      <div class="save-bar">
+        <button type="button" id="btn-save">Save this partner’s answers</button>
+        <span id="save-status" class="saved" style="display:none;">Saved.</span>
+      </div>
+    </div>
+    <div id="view-compare" class="view">
+      <p class="compare-intro">Side-by-side view of both partners’ answers. Fill out the questionnaire twice (once as each partner) first.</p>
+      <div id="compare-content"></div>
+    </div>
+    <div id="view-contract" class="view">
+      <p class="contract-intro">The written agreement is generated from your answers. Use recommendations (based on how aligned your answers are) or choose per section. Then copy or print the draft.</p>
+      <div id="contract-recommend-bar" class="recommend-bar" style="display:none;">
+        <span class="recommend-label">Suggestions from your answers:</span>
+        <button type="button" id="btn-apply-recommendations">Apply recommendations to all sections</button>
+      </div>
+      <div id="contract-content"></div>
+      <div class="export-bar">
+        <button type="button" id="btn-export-txt" class="primary">Copy contract to clipboard</button>
+        <button type="button" id="btn-export-file">Export agreement as file (.txt)</button>
+        <button type="button" id="btn-print">Print contract</button>
+      </div>
+      <div id="contract-doc" style="display:none;"></div>
+    </div>
+  </div>
+  <script src="data.js"></script>
+  <script src="agreement-generator.js"></script>
+  <script src="app.js"></script>
+  <script src="config.js"></script>
+  <script type="module" src="cloud.js"></script>
+</body>
+</html>
