@@ -284,20 +284,21 @@
       if (!questions.length) return;
       var secContract = contract[secId] || {};
       var recommended = recommendations[secId] || 'discuss';
-      var summaryA = questions.map(function (q) {
+      var qaRows = '';
+      questions.forEach(function (q) {
         var name = 'q' + q.id;
-        var v = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
-        return typeof v === 'object' ? (v && v.value) : v;
-      }).filter(Boolean).join(' · ') || '—';
-      var summaryB = questions.map(function (q) {
-        var name = 'q' + q.id;
-        var v = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
-        return typeof v === 'object' ? (v && v.value) : v;
-      }).filter(Boolean).join(' · ') || '—';
+        var vA = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
+        var vB = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
+        var ansA = typeof vA === 'object' ? (vA && vA.value) : vA;
+        var ansB = typeof vB === 'object' ? (vB && vB.value) : vB;
+        if (!ansA) ansA = '—';
+        if (!ansB) ansB = '—';
+        qaRows += '<div class="contract-qa-row"><span class="contract-qa-q"><span class="q-num">' + q.id + '.</span> ' + escapeHtml(q.text) + '</span><span class="contract-qa-a"><span class="qa-label">' + escapeHtml(labelA) + '</span>' + escapeHtml(String(ansA)) + '</span><span class="contract-qa-b"><span class="qa-label">' + escapeHtml(labelB) + '</span>' + escapeHtml(String(ansB)) + '</span></div>';
+      });
       var agree = secContract.agreement || '';
       var notes = secContract.notes || '';
       var discussionOutcome = secContract.discussionOutcome || '';
-      html += '<div class="contract-section" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabels[secId] || secId) + '</h3><div class="recommended">Suggested from your answers: ' + escapeHtml(getRecommendationLabel(recommended)) + '</div><div class="answers-summary"><div class="col"><strong>' + escapeHtml(labelA) + '</strong> ' + escapeHtml(summaryA) + '</div><div class="col"><strong>' + escapeHtml(labelB) + '</strong> ' + escapeHtml(summaryB) + '</div></div><div class="agreement-row"><label><input type="radio" name="contract_' + secId + '" value="together" ' + (agree === 'together' ? 'checked' : '') + ' /> We expect to fulfill these together</label><label><input type="radio" name="contract_' + secId + '" value="elsewhere" ' + (agree === 'elsewhere' ? 'checked' : '') + ' /> We acknowledge these needs; some may be met in other relationships</label><label><input type="radio" name="contract_' + secId + '" value="discuss" ' + (agree === 'discuss' ? 'checked' : '') + ' /> Needs more discussion</label></div><div class="agreement-notes"><textarea placeholder="Agreement notes (optional)" data-notes="' + secId + '">' + escapeHtml(notes) + '</textarea></div><div class="discussion-outcome"><label class="outcome-label">Discussion outcome — record what you decided after talking (added to the agreement):</label><textarea placeholder="e.g. We will revisit in 6 months. We agreed to X." data-outcome="' + secId + '">' + escapeHtml(discussionOutcome) + '</textarea></div></div>';
+      html += '<div class="contract-section" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabels[secId] || secId) + '</h3><div class="recommended">Suggested from your answers: ' + escapeHtml(getRecommendationLabel(recommended)) + '</div><div class="contract-qa-list">' + qaRows + '</div><div class="agreement-row"><label><input type="radio" name="contract_' + secId + '" value="together" ' + (agree === 'together' ? 'checked' : '') + ' /> We expect to fulfill these together</label><label><input type="radio" name="contract_' + secId + '" value="elsewhere" ' + (agree === 'elsewhere' ? 'checked' : '') + ' /> We acknowledge these needs; some may be met in other relationships</label><label><input type="radio" name="contract_' + secId + '" value="discuss" ' + (agree === 'discuss' ? 'checked' : '') + ' /> Needs more discussion</label></div><div class="agreement-notes"><textarea placeholder="Agreement notes (optional)" data-notes="' + secId + '">' + escapeHtml(notes) + '</textarea></div><div class="discussion-outcome"><label class="outcome-label">Discussion outcome — record what you decided after talking (added to the agreement):</label><textarea placeholder="e.g. We will revisit in 6 months. We agreed to X." data-outcome="' + secId + '">' + escapeHtml(discussionOutcome) + '</textarea></div></div>';
     });
     container.innerHTML = html;
 
