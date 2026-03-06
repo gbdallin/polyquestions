@@ -214,6 +214,7 @@ var supabase = createClient(url, key);
         loadIntoAppAndClose(sessionToLoadPayload(row));
       };
     } else if (hasA) {
+      setCurrentSession(row.id, row.code || null);
       if (typeof window.polyculeLoadSessionFromData === 'function') {
         window.polyculeLoadSessionFromData(sessionToLoadPayload(row));
       }
@@ -231,9 +232,17 @@ var supabase = createClient(url, key);
         loadIntoAppAndClose(sessionToLoadPayload(row));
       };
     } else {
+      // Session is empty (Partner A created the code but hasn't filled yet). You entered the code = you're Partner B.
       setCurrentSession(row.id, row.code);
-      if (row.code) showCodeInUI(row.code);
-      showSharedBanner('<p class="shared-msg">Session opened. You\'re Partner A. Fill your side and save—your answers will sync to this code.</p>');
+      switchFormToPartnerB();
+      showSharedBanner(
+        '<p class="shared-msg">Your partner created this session. You\'re Partner B.</p>' +
+        '<p class="shared-hint">Fill the questionnaire as Partner B, click Save this partner\'s answers, then click below.</p>' +
+        '<button type="button" id="btn-submit-partner-b" class="shared-btn">Save my answers to session</button>'
+      );
+      document.getElementById('btn-submit-partner-b').onclick = function () {
+        savePartnerBToCloud(row.id);
+      };
     }
   }
 
@@ -361,6 +370,28 @@ var supabase = createClient(url, key);
     showCloudBar();
   }
 
+  function refreshSessionFromCloud() {
+    var id = getCurrentSessionId();
+    if (!id) {
+      alert('Enter the session code first to join a session.');
+      return;
+    }
+    supabase.from('sessions').select('*').eq('id', id).single().then(function (result) {
+      if (result.error || !result.data) {
+        alert('Could not load session. Try entering the code again.');
+        return;
+      }
+      var row = result.data;
+      var hasA = row.answers_a && Object.keys(row.answers_a).length > 0;
+      var hasB = row.answers_b && Object.keys(row.answers_b).length > 0;
+      if (hasA && hasB) {
+        loadIntoAppAndClose(sessionToLoadPayload(row));
+      } else {
+        alert('Not ready yet. Partner A has ' + (hasA ? '' : 'not ') + 'saved. Partner B has ' + (hasB ? '' : 'not ') + 'saved. Try again in a moment.');
+      }
+    });
+  }
+
   function initCodeBar() {
     var codeBar = document.getElementById('code-bar');
     if (codeBar) codeBar.style.display = 'flex';
@@ -373,7 +404,24 @@ var supabase = createClient(url, key);
       codeInput.onkeydown = function (e) { if (e.key === 'Enter') fetchByCode(codeInput.value); };
     }
     var code = getCurrentSessionCode();
-    if (code) showCodeInUI(code);
+    if (code) {
+      showCodeInUI(code);
+      showRefreshSessionButton();
+    }
+  }
+
+  function showRefreshSessionButton() {
+    var wrap = document.getElementById('code-display-wrap');
+    if (!wrap) return;
+    var existing = document.getElementById('btn-refresh-session');
+    if (existing) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'btn-refresh-session';
+    btn.className = 'code-copy-btn';
+    btn.textContent = 'Load session from cloud';
+    btn.onclick = refreshSessionFromCloud;
+    wrap.appendChild(btn);
   }
 
   window.polyculeSaveToCloudIfSession = function () {
