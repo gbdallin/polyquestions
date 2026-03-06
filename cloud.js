@@ -204,13 +204,11 @@ var supabase = createClient(url, key);
     var hasA = row.answers_a && Object.keys(row.answers_a).length > 0;
     var hasB = row.answers_b && Object.keys(row.answers_b).length > 0;
     if (hasA && hasB) {
-      showSharedBanner(
-        '<p class="shared-msg">Both partners have completed this session.</p>' +
-        '<button type="button" id="btn-load-shared" class="shared-btn">Load into app</button>'
-      );
-      document.getElementById('btn-load-shared').onclick = function () {
-        loadIntoAppAndClose(sessionToLoadPayload(row));
-      };
+      setCurrentSession(row.id, row.code || null);
+      if (typeof window.polyculeLoadSessionFromData === 'function') {
+        window.polyculeLoadSessionFromData(sessionToLoadPayload(row));
+      }
+      hideSharedBanner();
     } else if (hasA) {
       setCurrentSession(row.id, row.code || null);
       if (typeof window.polyculeLoadSessionFromData === 'function') {
