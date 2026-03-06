@@ -384,31 +384,58 @@
     #code-bar #btn-code-go:hover { border-color: var(--accent); color: var(--accent); }
     #code-bar .code-enter-label { color: var(--muted); font-size: 0.9rem; }
     #code-display-wrap { display: none; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    .page { display: none; }
+    .page.active { display: block; }
+    #session-strip {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    #session-strip .session-code { font-size: 0.9rem; color: var(--muted); }
+    #session-strip .session-code strong { color: var(--accent); letter-spacing: 0.1em; }
+    #session-strip button {
+      padding: 0.4rem 0.75rem;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    #session-strip button:hover { border-color: var(--accent); color: var(--accent); }
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>Polycule Expectations</h1>
-    <p class="subtitle">Questionnaire → Compare → Relationship contract. Data stays on this device.</p>
-    <div id="shared-session-banner" aria-live="polite"></div>
-    <div id="code-bar" style="display:none;">
-      <button type="button" id="btn-start-new">Start new (get code)</button>
-      <span class="code-enter-label">or enter code:</span>
-      <input type="text" id="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" />
-      <button type="button" id="btn-code-go">Join / Open</button>
-      <div id="code-display-wrap"></div>
+    <!-- Setup: start or join a session (no form) -->
+    <div id="page-setup" class="page">
+      <h1>Polycule Expectations</h1>
+      <p class="subtitle">Questionnaire → Compare → Relationship contract. Stored online—start or join a session to continue.</p>
+      <div id="code-bar" style="display:none;">
+        <button type="button" id="btn-start-new">Start new (get code)</button>
+        <span class="code-enter-label">or enter code:</span>
+        <input type="text" id="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" />
+        <button type="button" id="btn-code-go">Join / Open</button>
+        <div id="code-display-wrap"></div>
+      </div>
+      <p id="setup-no-cloud-msg" class="subtitle" style="display:none;">Configure Supabase (config.js) to use this app.</p>
     </div>
-    <div id="cloud-bar">
-      <button type="button" id="btn-save-to-cloud">Create shared link (save to cloud)</button>
-      <div id="cloud-link-wrap"></div>
-    </div>
-    <div class="file-bar">
-      <button type="button" id="btn-save-session">Save session to file</button>
-      <button type="button" id="btn-load-session">Load session from file</button>
-      <input type="file" id="input-load-session" accept=".polycule,.json" style="display:none;" />
-      <span class="file-bar-hint">One file = one pair. Save to a dedicated folder to revisit or share.</span>
-    </div>
-    <nav>
+
+    <!-- App: questionnaire, compare, contract (in-session only) -->
+    <div id="page-app" class="page">
+      <h1>Polycule Expectations</h1>
+      <p class="subtitle">Questionnaire → Compare → Relationship contract.</p>
+      <div id="session-strip">
+        <span id="session-strip-code" class="session-code" style="display:none;"></span>
+        <button type="button" id="btn-start-over">Start over</button>
+      </div>
+      <div id="shared-session-banner" aria-live="polite"></div>
+      <nav>
       <button type="button" data-view="form" class="active">Questionnaire</button>
       <button type="button" data-view="compare">Compare answers</button>
       <button type="button" data-view="contract">Relationship contract</button>
@@ -443,6 +470,7 @@
         <button type="button" id="btn-print">Print contract</button>
       </div>
       <div id="contract-doc" style="display:none;"></div>
+    </div>
     </div>
   </div>
   <script src="data.js"></script>

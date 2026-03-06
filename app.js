@@ -164,38 +164,31 @@
     document.getElementById('name-a').value = names.A;
     document.getElementById('name-b').value = names.B;
 
-    const bySection = {};
-    QUESTIONS.forEach((q) => {
-      if (!bySection[q.section]) bySection[q.section] = [];
-      bySection[q.section].push(q);
+    var sectionLabels = {};
+    SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
+    var sorted = QUESTIONS.slice().sort(function (a, b) { return a.id - b.id; });
+    var lastSection = null;
+    var html = '';
+    sorted.forEach(function (q) {
+      if (q.section !== lastSection) {
+        if (lastSection) html += '</div>';
+        lastSection = q.section;
+        html += '<div class="section-block" data-section="' + escapeHtml(lastSection) + '"><h2>' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</h2>';
+      }
+      var name = 'q' + q.id;
+      var existing = formData[currentPartner][name];
+      if (q.type === 'text') {
+        html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><textarea name="' + name + '" data-qid="' + q.id + '" placeholder="' + escapeHtml(q.placeholder || '') + '">' + escapeHtml(existing && existing.value ? existing.value : '') + '</textarea><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Notes (optional)" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
+      } else {
+        html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><div class="options">';
+        q.options.forEach(function (opt) {
+          var checked = existing && existing.value === opt ? ' checked' : '';
+          html += '<label><input type="radio" name="' + name + '" value="' + escapeHtml(opt) + '"' + checked + ' /> ' + escapeHtml(opt) + '</label>';
+        });
+        html += '</div><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Notes (optional)" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
+      }
     });
-
-    let html = '';
-    SECTIONS.forEach((sec) => {
-      const questions = bySection[sec.id] || [];
-      if (!questions.length) return;
-      html += `<div class="section-block" data-section="${sec.id}"><h2>${sec.label}</h2>`;
-      questions.forEach((q) => {
-        const name = `q${q.id}`;
-        const existing = formData[currentPartner][name];
-        if (q.type === 'text') {
-          html += `
-            <div class="q-block">
-              <label class="q-text">${q.id}. ${escapeHtml(q.text)}</label>
-              <textarea name="${name}" data-qid="${q.id}" placeholder="${escapeHtml(q.placeholder || '')}">${escapeHtml(existing?.value || '')}</textarea>
-              <div class="notes"><input type="text" name="${name}_notes" placeholder="Notes (optional)" value="${escapeHtml(existing?.notes || '')}" /></div>
-            </div>`;
-        } else {
-          html += `<div class="q-block"><label class="q-text">${q.id}. ${escapeHtml(q.text)}</label><div class="options">`;
-          q.options.forEach((opt) => {
-            const checked = existing?.value === opt ? ' checked' : '';
-            html += `<label><input type="radio" name="${name}" value="${escapeHtml(opt)}"${checked} /> ${escapeHtml(opt)}</label>`;
-          });
-          html += `</div><div class="notes"><input type="text" name="${name}_notes" placeholder="Notes (optional)" value="${escapeHtml(existing?.notes || '')}" /></div></div>`;
-        }
-      });
-      html += '</div>';
-    });
+    if (lastSection) html += '</div>';
     container.innerHTML = html;
   }
 
@@ -229,25 +222,22 @@
       return;
     }
 
-    const bySection = {};
-    QUESTIONS.forEach((q) => {
-      if (!bySection[q.section]) bySection[q.section] = [];
-      bySection[q.section].push(q);
-    });
-
-    let html = '<table class="compare-table"><thead><tr><th>Question</th><th class="partner-a">' + escapeHtml(labelA) + '</th><th class="partner-b">' + escapeHtml(labelB) + '</th></tr></thead><tbody>';
-    SECTIONS.forEach((sec) => {
-      const questions = bySection[sec.id] || [];
-      if (!questions.length) return;
-      html += `<tr class="section-row"><td colspan="3">${escapeHtml(sec.label)}</td></tr>`;
-      questions.forEach((q) => {
-        const name = `q${q.id}`;
-        const aVal = answers.A[name]?.value ?? answers.A[name];
-        const aDisplay = typeof aVal === 'object' ? (aVal.value || '—') : (aVal || '—');
-        const bVal = answers.B[name]?.value ?? answers.B[name];
-        const bDisplay = typeof bVal === 'object' ? (bVal.value || '—') : (bVal || '—');
-        html += `<tr><th>${escapeHtml(q.text)}</th><td class="answer">${escapeHtml(String(aDisplay))}</td><td class="answer">${escapeHtml(String(bDisplay))}</td></tr>`;
-      });
+    var sectionLabels = {};
+    SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
+    var sorted = QUESTIONS.slice().sort(function (a, b) { return a.id - b.id; });
+    var lastSection = null;
+    var html = '<table class="compare-table"><thead><tr><th>Question</th><th class="partner-a">' + escapeHtml(labelA) + '</th><th class="partner-b">' + escapeHtml(labelB) + '</th></tr></thead><tbody>';
+    sorted.forEach(function (q) {
+      if (q.section !== lastSection) {
+        lastSection = q.section;
+        html += '<tr class="section-row"><td colspan="3">' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</td></tr>';
+      }
+      var name = 'q' + q.id;
+      var aVal = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
+      var aDisplay = typeof aVal === 'object' ? (aVal && aVal.value || '—') : (aVal || '—');
+      var bVal = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
+      var bDisplay = typeof bVal === 'object' ? (bVal && bVal.value || '—') : (bVal || '—');
+      html += '<tr><th>' + escapeHtml(q.text) + '</th><td class="answer">' + escapeHtml(String(aDisplay)) + '</td><td class="answer">' + escapeHtml(String(bDisplay)) + '</td></tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;
@@ -280,54 +270,34 @@
       : {};
     if (recommendBar) recommendBar.style.display = 'flex';
 
-    const bySection = {};
-    QUESTIONS.forEach((q) => {
-      if (!bySection[q.section]) bySection[q.section] = [];
-      bySection[q.section].push(q);
+    var sectionLabels = {};
+    SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
+    var sorted = QUESTIONS.slice().sort(function (a, b) { return a.id - b.id; });
+    var sectionOrder = [];
+    sorted.forEach(function (q) {
+      if (sectionOrder.indexOf(q.section) === -1) sectionOrder.push(q.section);
     });
 
-    let html = '';
-    SECTIONS.forEach((sec) => {
-      const questions = bySection[sec.id] || [];
+    var html = '';
+    sectionOrder.forEach(function (secId) {
+      var questions = sorted.filter(function (q) { return q.section === secId; });
       if (!questions.length) return;
-      const secContract = contract[sec.id] || {};
-      const recommended = recommendations[sec.id] || 'discuss';
-      const summaryA = questions.map((q) => {
-        const name = `q${q.id}`;
-        const v = answers.A[name]?.value ?? answers.A[name];
-        return typeof v === 'object' ? v.value : v;
+      var secContract = contract[secId] || {};
+      var recommended = recommendations[secId] || 'discuss';
+      var summaryA = questions.map(function (q) {
+        var name = 'q' + q.id;
+        var v = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
+        return typeof v === 'object' ? (v && v.value) : v;
       }).filter(Boolean).join(' · ') || '—';
-      const summaryB = questions.map((q) => {
-        const name = `q${q.id}`;
-        const v = answers.B[name]?.value ?? answers.B[name];
-        return typeof v === 'object' ? v.value : v;
+      var summaryB = questions.map(function (q) {
+        var name = 'q' + q.id;
+        var v = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
+        return typeof v === 'object' ? (v && v.value) : v;
       }).filter(Boolean).join(' · ') || '—';
-
-      const agree = secContract.agreement || '';
-      const notes = secContract.notes || '';
-      const discussionOutcome = secContract.discussionOutcome || '';
-
-      html += `
-        <div class="contract-section" data-section="${sec.id}">
-          <h3>${escapeHtml(sec.label)}</h3>
-          <div class="recommended">Suggested from your answers: ${escapeHtml(getRecommendationLabel(recommended))}</div>
-          <div class="answers-summary">
-            <div class="col"><strong>${escapeHtml(labelA)}</strong> ${escapeHtml(summaryA)}</div>
-            <div class="col"><strong>${escapeHtml(labelB)}</strong> ${escapeHtml(summaryB)}</div>
-          </div>
-          <div class="agreement-row">
-            <label><input type="radio" name="contract_${sec.id}" value="together" ${agree === 'together' ? 'checked' : ''} /> We expect to fulfill these together</label>
-            <label><input type="radio" name="contract_${sec.id}" value="elsewhere" ${agree === 'elsewhere' ? 'checked' : ''} /> We acknowledge these needs; some may be met in other relationships</label>
-            <label><input type="radio" name="contract_${sec.id}" value="discuss" ${agree === 'discuss' ? 'checked' : ''} /> Needs more discussion</label>
-          </div>
-          <div class="agreement-notes">
-            <textarea placeholder="Agreement notes (optional)" data-notes="${sec.id}">${escapeHtml(notes)}</textarea>
-          </div>
-          <div class="discussion-outcome">
-            <label class="outcome-label">Discussion outcome — record what you decided after talking (added to the agreement):</label>
-            <textarea placeholder="e.g. We will revisit in 6 months. We agreed to X." data-outcome="${sec.id}">${escapeHtml(discussionOutcome)}</textarea>
-          </div>
-        </div>`;
+      var agree = secContract.agreement || '';
+      var notes = secContract.notes || '';
+      var discussionOutcome = secContract.discussionOutcome || '';
+      html += '<div class="contract-section" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabels[secId] || secId) + '</h3><div class="recommended">Suggested from your answers: ' + escapeHtml(getRecommendationLabel(recommended)) + '</div><div class="answers-summary"><div class="col"><strong>' + escapeHtml(labelA) + '</strong> ' + escapeHtml(summaryA) + '</div><div class="col"><strong>' + escapeHtml(labelB) + '</strong> ' + escapeHtml(summaryB) + '</div></div><div class="agreement-row"><label><input type="radio" name="contract_' + secId + '" value="together" ' + (agree === 'together' ? 'checked' : '') + ' /> We expect to fulfill these together</label><label><input type="radio" name="contract_' + secId + '" value="elsewhere" ' + (agree === 'elsewhere' ? 'checked' : '') + ' /> We acknowledge these needs; some may be met in other relationships</label><label><input type="radio" name="contract_' + secId + '" value="discuss" ' + (agree === 'discuss' ? 'checked' : '') + ' /> Needs more discussion</label></div><div class="agreement-notes"><textarea placeholder="Agreement notes (optional)" data-notes="' + secId + '">' + escapeHtml(notes) + '</textarea></div><div class="discussion-outcome"><label class="outcome-label">Discussion outcome — record what you decided after talking (added to the agreement):</label><textarea placeholder="e.g. We will revisit in 6 months. We agreed to X." data-outcome="' + secId + '">' + escapeHtml(discussionOutcome) + '</textarea></div></div>';
     });
     container.innerHTML = html;
 
@@ -412,10 +382,85 @@
     if (viewId === 'contract') renderContract();
   }
 
+  var SESSION_ID_KEY = 'polycule_cloud_session_id';
+  var SESSION_CODE_KEY = 'polycule_cloud_session_code';
+
+  function showSetupPage() {
+    var setup = document.getElementById('page-setup');
+    var app = document.getElementById('page-app');
+    if (setup) setup.classList.add('active');
+    if (app) app.classList.remove('active');
+  }
+
+  function showAppPage() {
+    var setup = document.getElementById('page-setup');
+    var app = document.getElementById('page-app');
+    if (setup) setup.classList.remove('active');
+    if (app) app.classList.add('active');
+    updateSessionStrip();
+  }
+
+  function updateSessionStrip() {
+    var codeEl = document.getElementById('session-strip-code');
+    if (!codeEl) return;
+    try {
+      var code = sessionStorage.getItem(SESSION_CODE_KEY);
+      if (code) {
+        codeEl.style.display = '';
+        codeEl.innerHTML = 'Session: <strong>' + escapeHtml(code) + '</strong> ';
+        var copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.textContent = 'Copy code';
+        copyBtn.addEventListener('click', function () {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(function () { copyBtn.textContent = 'Copied'; });
+          }
+        });
+        codeEl.appendChild(copyBtn);
+      } else {
+        codeEl.style.display = 'none';
+        codeEl.innerHTML = '';
+      }
+    } catch (_) {
+      codeEl.style.display = 'none';
+    }
+  }
+
+  window.polyculeShowSetupPage = showSetupPage;
+  window.polyculeShowAppPage = showAppPage;
+  window.polyculeUpdateSessionStrip = updateSessionStrip;
+
+  function startOver() {
+    try {
+      sessionStorage.removeItem(SESSION_ID_KEY);
+      sessionStorage.removeItem(SESSION_CODE_KEY);
+    } catch (_) {}
+    localStorage.removeItem(STORAGE_ANSWERS_A);
+    localStorage.removeItem(STORAGE_ANSWERS_B);
+    localStorage.removeItem(STORAGE_NAMES);
+    localStorage.removeItem(STORAGE_CONTRACT);
+    formData = { A: {}, B: {} };
+    currentPartner = 'A';
+    if (window.polyculeShowSetupPage) window.polyculeShowSetupPage();
+  }
+
   function init() {
     formData = getAnswers();
     currentPartner = document.querySelector('input[name="who"]:checked')?.value || 'A';
     renderForm();
+
+    var startOverBtn = document.getElementById('btn-start-over');
+    if (startOverBtn) startOverBtn.addEventListener('click', startOver);
+
+    try {
+      if (sessionStorage.getItem(SESSION_ID_KEY)) {
+        if (window.polyculeShowAppPage) window.polyculeShowAppPage();
+      } else {
+        if (window.polyculeShowSetupPage) window.polyculeShowSetupPage();
+      }
+    } catch (_) {
+      if (window.polyculeShowSetupPage) window.polyculeShowSetupPage();
+    }
 
     document.querySelectorAll('input[name="who"]').forEach((r) => {
       r.addEventListener('change', () => {
@@ -465,23 +510,6 @@
         updateContractDoc();
       });
     }
-
-    document.getElementById('btn-save-session').addEventListener('click', saveSessionToFile);
-
-    document.getElementById('btn-load-session').addEventListener('click', function () {
-      var input = document.getElementById('input-load-session');
-      if (input) input.click();
-    });
-    document.getElementById('input-load-session').addEventListener('change', function () {
-      var file = this.files && this.files[0];
-      if (!file) return;
-      if (hasCurrentData() && !confirm('Load this file? Current questionnaire and contract data will be replaced.')) {
-        this.value = '';
-        return;
-      }
-      loadSessionFromFile(file);
-      this.value = '';
-    });
 
     document.getElementById('btn-export-txt').addEventListener('click', () => {
       const docEl = document.getElementById('contract-doc');

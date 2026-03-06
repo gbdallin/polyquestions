@@ -8,12 +8,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 var url = typeof window !== 'undefined' && window.POLYCULE_SUPABASE_URL;
 var key = typeof window !== 'undefined' && window.POLYCULE_SUPABASE_ANON_KEY;
 if (!url || !key) {
-  // Cloud disabled; config.js not set up. Hide cloud UI and code bar.
+  // Cloud disabled; config.js not set up. Show message on setup page.
   document.addEventListener('DOMContentLoaded', function () {
-    var bar = document.getElementById('cloud-bar');
-    if (bar) bar.style.display = 'none';
     var codeBar = document.getElementById('code-bar');
     if (codeBar) codeBar.style.display = 'none';
+    var msg = document.getElementById('setup-no-cloud-msg');
+    if (msg) msg.style.display = 'block';
   });
 } else {
 var supabase = createClient(url, key);
@@ -116,8 +116,6 @@ var supabase = createClient(url, key);
       window.polyculeLoadSessionFromData(payload);
     }
     hideSharedBanner();
-    var bar = document.getElementById('cloud-bar');
-    if (bar) bar.style.display = 'none';
     window.history.replaceState({}, document.title, window.location.pathname || window.location.href.split('?')[0]);
     window.location.reload();
   }
@@ -149,8 +147,7 @@ var supabase = createClient(url, key);
         return;
       }
       setCurrentSession(id, code);
-      showCodeInUI(code);
-      showCloudBar();
+      if (window.polyculeShowAppPage) window.polyculeShowAppPage();
     });
   }
 
@@ -203,6 +200,7 @@ var supabase = createClient(url, key);
   }
 
   function handleFetchedSession(row) {
+    if (window.polyculeShowAppPage) window.polyculeShowAppPage();
     var hasA = row.answers_a && Object.keys(row.answers_a).length > 0;
     var hasB = row.answers_b && Object.keys(row.answers_b).length > 0;
     if (hasA && hasB) {
@@ -435,11 +433,9 @@ var supabase = createClient(url, key);
     document.addEventListener('DOMContentLoaded', function () {
       initFromUrl();
       initCodeBar();
-      initCloudBar();
     });
   } else {
     initFromUrl();
     initCodeBar();
-    initCloudBar();
   }
 }
