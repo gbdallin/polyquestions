@@ -114,8 +114,56 @@ var AgreementGenerator = (function () {
   }
 
   /**
+   * Generate longform recommendation text for a section (for the contract builder UI).
+   * @param {string} sectionLabel - e.g. "Money"
+   * @param {Array} questions - QUESTIONS in this section
+   * @param {Object} answersA - map of q1, q2, ... to { value, notes }
+   * @param {Object} answersB - same
+   * @param {'together'|'elsewhere'|'discuss'} agreementType
+   * @param {string} labelA - display name for partner A
+   * @param {string} labelB - display name for partner B
+   * @returns {string} Paragraph(s) of recommendation prose
+   */
+  function getRecommendationLongform(sectionLabel, questions, answersA, answersB, agreementType, labelA, labelB) {
+    var summaryA = summaryForPartner(answersA, questions);
+    var summaryB = summaryForPartner(answersB, questions);
+    var sameCount = 0, oppositeCount = 0, total = 0;
+    questions.forEach(function (q) {
+      var name = 'q' + q.id;
+      var va = answersA[name] && (answersA[name].value !== undefined ? answersA[name].value : answersA[name]);
+      var vb = answersB[name] && (answersB[name].value !== undefined ? answersB[name].value : answersB[name]);
+      if (normalize(va) === '' && normalize(vb) === '') return;
+      total++;
+      if (areSame(va, vb)) sameCount++;
+      else if (areOpposite(va, vb)) oppositeCount++;
+    });
+
+    var intro = '';
+    if (total === 0) {
+      intro = 'Neither of you has answered the questions in this section yet. ';
+    } else if (oppositeCount > 0) {
+      intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' show some clear differences. ';
+    } else if (sameCount === total) {
+      intro = 'You and ' + labelB + ' are aligned here: you both indicated similar expectations. ';
+    } else {
+      intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' are partly aligned. ';
+    }
+
+    var recommendation = '';
+    if (agreementType === 'together') {
+      recommendation = 'We recommend stating that you intend to meet these ' + sectionLabel.toLowerCase() + ' needs and expectations together within this relationship. You can add specifics or caveats in the notes below.';
+    } else if (agreementType === 'elsewhere') {
+      recommendation = 'We recommend acknowledging these needs and stating that you are open to some of them being met in other relationships, with your support for each other. Add any boundaries or specifics in the notes below.';
+    } else {
+      recommendation = 'We recommend keeping this area under ongoing conversation and explicitly agreeing to revisit your expectations as your situation or feelings change. Use the notes below to record what you\'ve already discussed or decided.';
+    }
+
+    return intro + recommendation;
+  }
+
+  /**
    * Generate prose for one section.
-   * discussionOutcome: optional text recording what was decided after discussion (included in agreement).
+   * notes: optional notes or decisions for this section (included in agreement).
    */
   function generateSectionProse(sec, labelA, labelB, answersA, answersB, agreementType, notes, questions, discussionOutcome) {
     var summaryA = summaryForPartner(answersA, questions);
@@ -125,10 +173,8 @@ var AgreementGenerator = (function () {
     if (summaryA) lines.push(labelA + ' indicated: ' + summaryA);
     if (summaryB) lines.push(labelB + ' indicated: ' + summaryB);
     lines.push(agreementSentence(agreementType, sec.label));
-    if (notes) lines.push('Note: ' + notes);
-    if (discussionOutcome && discussionOutcome.trim()) {
-      lines.push('After discussion, we have decided: ' + discussionOutcome.trim());
-    }
+    var sectionNote = (notes || '').trim() || (discussionOutcome || '').trim();
+    if (sectionNote) lines.push('Note: ' + sectionNote);
     return lines.join(' ');
   }
 
@@ -182,6 +228,7 @@ var AgreementGenerator = (function () {
   return {
     getRecommendations: getRecommendations,
     recommendForSection: recommendForSection,
+    getRecommendationLongform: getRecommendationLongform,
     generateFullAgreement: generateFullAgreement,
     agreementSentence: agreementSentence,
   };

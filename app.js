@@ -261,14 +261,25 @@
     if (!Object.keys(answers.A).length && !Object.keys(answers.B).length) {
       container.innerHTML = '<p class="contract-empty">Fill out the questionnaire for both partners and use Compare first, then build your contract here.</p>';
       if (recommendBar) recommendBar.style.display = 'none';
-      document.getElementById('contract-doc').style.display = 'none';
+      var docEl = document.getElementById('contract-doc');
+      if (docEl) docEl.style.display = 'none';
       return;
     }
 
-    const recommendations = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations
+    var recommendations = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations
       ? AgreementGenerator.getRecommendations(answers.A, answers.B)
       : {};
-    if (recommendBar) recommendBar.style.display = 'flex';
+    var getLongform = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendationLongform
+      ? AgreementGenerator.getRecommendationLongform
+      : function () { return ''; };
+
+    for (var secId in recommendations) {
+      var c = contract[secId] || {};
+      if (!c.agreement) {
+        saveContractSection(secId, recommendations[secId], c.notes || '', c.discussionOutcome || '');
+      }
+    }
+    contract = getContract();
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
@@ -284,6 +295,10 @@
       if (!questions.length) return;
       var secContract = contract[secId] || {};
       var recommended = recommendations[secId] || 'discuss';
+      var agree = secContract.agreement || recommended;
+      var sectionLabel = sectionLabels[secId] || secId;
+      var longform = getLongform(sectionLabel, questions, answers.A, answers.B, agree, labelA, labelB);
+
       var qaRows = '';
       questions.forEach(function (q) {
         var name = 'q' + q.id;
@@ -295,28 +310,33 @@
         if (!ansB) ansB = '—';
         qaRows += '<div class="contract-qa-row"><span class="contract-qa-q"><span class="q-num">' + q.id + '.</span> ' + escapeHtml(q.text) + '</span><span class="contract-qa-a"><span class="qa-label">' + escapeHtml(labelA) + '</span>' + escapeHtml(String(ansA)) + '</span><span class="contract-qa-b"><span class="qa-label">' + escapeHtml(labelB) + '</span>' + escapeHtml(String(ansB)) + '</span></div>';
       });
-      var agree = secContract.agreement || '';
       var notes = secContract.notes || '';
       var discussionOutcome = secContract.discussionOutcome || '';
-      html += '<div class="contract-section" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabels[secId] || secId) + '</h3><div class="recommended">Suggested from your answers: ' + escapeHtml(getRecommendationLabel(recommended)) + '</div><div class="contract-qa-list">' + qaRows + '</div><div class="agreement-row"><label><input type="radio" name="contract_' + secId + '" value="together" ' + (agree === 'together' ? 'checked' : '') + ' /> We expect to fulfill these together</label><label><input type="radio" name="contract_' + secId + '" value="elsewhere" ' + (agree === 'elsewhere' ? 'checked' : '') + ' /> We acknowledge these needs; some may be met in other relationships</label><label><input type="radio" name="contract_' + secId + '" value="discuss" ' + (agree === 'discuss' ? 'checked' : '') + ' /> Needs more discussion</label></div><div class="agreement-notes"><textarea placeholder="Agreement notes (optional)" data-notes="' + secId + '">' + escapeHtml(notes) + '</textarea></div><div class="discussion-outcome"><label class="outcome-label">Discussion outcome — record what you decided after talking (added to the agreement):</label><textarea placeholder="e.g. We will revisit in 6 months. We agreed to X." data-outcome="' + secId + '">' + escapeHtml(discussionOutcome) + '</textarea></div></div>';
+      var sectionNotes = notes || (discussionOutcome ? discussionOutcome : '');
+
+      html += '<div class="contract-section" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabel) + '</h3><div class="contract-qa-list">' + qaRows + '</div><div class="contract-recommendation-tile"><p class="contract-recommendation-text">' + escapeHtml(longform) + '</p><details class="contract-framing-override"><summary>Choose different framing</summary><div class="agreement-row"><label><input type="radio" name="contract_' + secId + '" value="together" ' + (agree === 'together' ? 'checked' : '') + ' /> Fulfill together</label><label><input type="radio" name="contract_' + secId + '" value="elsewhere" ' + (agree === 'elsewhere' ? 'checked' : '') + ' /> Some may be met elsewhere</label><label><input type="radio" name="contract_' + secId + '" value="discuss" ' + (agree === 'discuss' ? 'checked' : '') + ' /> Needs more discussion</label></div></details></div><div class="agreement-notes"><label class="agreement-notes-label">Notes or decisions for this section (added to the agreement):</label><textarea placeholder="e.g. We agreed to X. We will revisit in 6 months." data-notes="' + secId + '">' + escapeHtml(sectionNotes) + '</textarea></div></div>';
     });
     container.innerHTML = html;
 
     container.querySelectorAll('.contract-section').forEach((block) => {
       const sectionId = block.dataset.section;
-      const radios = block.querySelectorAll(`input[name="contract_${sectionId}"]`);
-      const notesEl = block.querySelector('textarea[data-notes]');
-      const outcomeEl = block.querySelector('textarea[data-outcome]');
+      const radios = block.querySelectorAll('input[name="contract_' + sectionId + '"]');
+      var notesEl = block.querySelector('textarea[data-notes]');
       function saveSection() {
-        const checked = block.querySelector(`input[name="contract_${sectionId}"]:checked`);
-        saveContractSection(sectionId, checked ? checked.value : '', notesEl.value.trim(), outcomeEl ? outcomeEl.value.trim() : '');
+        var checked = block.querySelector('input[name="contract_' + sectionId + '"]:checked');
+        saveContractSection(sectionId, checked ? checked.value : '', notesEl ? notesEl.value.trim() : '', '');
         updateContractDoc();
       }
-      radios.forEach((r) => {
-        r.addEventListener('change', saveSection);
-      });
-      notesEl.addEventListener('input', saveSection);
-      if (outcomeEl) outcomeEl.addEventListener('input', saveSection);
+      function onFramingChange() {
+        saveSection();
+        renderContract();
+      }
+      if (radios && radios.length) {
+        for (var i = 0; i < radios.length; i++) {
+          radios[i].addEventListener('change', onFramingChange);
+        }
+      }
+      if (notesEl) notesEl.addEventListener('input', saveSection);
     });
     updateContractDoc();
   }
@@ -493,24 +513,6 @@
         if (btn.dataset.view) showView(btn.dataset.view);
       });
     });
-
-    var applyRecBtn = document.getElementById('btn-apply-recommendations');
-    if (applyRecBtn) {
-      applyRecBtn.addEventListener('click', function () {
-        var answers = getAnswers();
-        if (!Object.keys(answers.A).length && !Object.keys(answers.B).length) return;
-        var recommendations = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations
-          ? AgreementGenerator.getRecommendations(answers.A, answers.B)
-          : {};
-        var contract = getContract();
-        Object.keys(recommendations).forEach(function (sectionId) {
-          var existing = contract[sectionId] || {};
-          saveContractSection(sectionId, recommendations[sectionId], existing.notes || '', existing.discussionOutcome || '');
-        });
-        renderContract();
-        updateContractDoc();
-      });
-    }
 
     document.getElementById('btn-export-txt').addEventListener('click', () => {
       const docEl = document.getElementById('contract-doc');
