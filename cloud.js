@@ -239,19 +239,16 @@ var supabase = createClient(url, key);
 
   function createShareLink() {
     var payload = buildSessionPayload();
-    if (!payload || !payload.answers_a || Object.keys(payload.answers_a).length === 0) {
-      alert('Fill out Partner A\'s questionnaire first, then click Save this partner\'s answers.');
-      return;
-    }
+    if (!payload) payload = { partner_names: {}, answers_a: {}, answers_b: null, contract: {} };
     var id = crypto.randomUUID && crypto.randomUUID() || generateSimpleId();
     var code = generateCode();
     var row = {
       id: id,
       code: code,
-      partner_names: payload.partner_names,
-      answers_a: payload.answers_a,
-      answers_b: payload.answers_b,
-      contract: payload.contract,
+      partner_names: payload.partner_names || {},
+      answers_a: payload.answers_a || {},
+      answers_b: payload.answers_b || null,
+      contract: payload.contract || {},
     };
     supabase.from('sessions').insert(row).then(function (result) {
       if (result.error) {
