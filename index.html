@@ -96,6 +96,7 @@
       background: var(--surface);
       border-radius: var(--radius);
       border: 1px solid var(--border);
+      scroll-margin-top: 0.5rem;
     }
     .section-block h2 {
       font-family: var(--font-serif);
@@ -466,6 +467,20 @@
       cursor: pointer;
     }
     #session-strip button:hover { border-color: var(--accent); color: var(--accent); }
+    .form-section-nav {
+      margin-bottom: 1rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-section-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-right: 0.5rem;
+    }
+    .form-section-nav a:hover { color: var(--accent); }
+    .form-section-nav a::after { content: ' · '; color: var(--border); pointer-events: none; }
+    .form-section-nav a:last-child::after { content: ''; }
   </style>
 </head>
 <body>
@@ -505,6 +520,7 @@
         <label><input type="radio" name="who" value="B" /> Partner B</label>
         <span class="name-input"><input type="text" id="name-b" placeholder="Name (optional)" /></span>
       </div>
+      <div id="form-section-nav" class="form-section-nav" aria-label="Jump to section"></div>
       <div id="form-content"></div>
       <div class="save-bar">
         <button type="button" id="btn-save">Save this partner’s answers</button>

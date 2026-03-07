@@ -1,6 +1,9 @@
 // Questionnaire data: 50 questions by section
 // Used only on this machine; data stored in localStorage.
 // Exposed globally for app.js (open index.html in browser, no server).
+// Bump QUESTIONNAIRE_VERSION when adding sections/questions or changing structure; see FUTURE-PROOFING.md.
+
+var QUESTIONNAIRE_VERSION = 1;
 
 var SECTIONS = [
   { id: 'money', label: 'Money' },

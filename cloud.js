@@ -133,6 +133,7 @@ var supabase = createClient(url, key);
   function startNewSession() {
     var id = crypto.randomUUID && crypto.randomUUID() || generateSimpleId();
     var code = generateCode();
+    var qVersion = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
     var row = {
       id: id,
       code: code,
@@ -140,6 +141,7 @@ var supabase = createClient(url, key);
       answers_a: {},
       answers_b: null,
       contract: {},
+      questionnaire_version: qVersion,
     };
     supabase.from('sessions').insert(row).then(function (result) {
       if (result.error) {
@@ -247,6 +249,7 @@ var supabase = createClient(url, key);
     if (!payload) payload = { partner_names: {}, answers_a: {}, answers_b: null, contract: {} };
     var id = crypto.randomUUID && crypto.randomUUID() || generateSimpleId();
     var code = generateCode();
+    var qVersion = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
     var row = {
       id: id,
       code: code,
@@ -254,6 +257,7 @@ var supabase = createClient(url, key);
       answers_a: payload.answers_a || {},
       answers_b: payload.answers_b || null,
       contract: payload.contract || {},
+      questionnaire_version: qVersion,
     };
     supabase.from('sessions').insert(row).then(function (result) {
       if (result.error) {

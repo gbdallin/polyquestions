@@ -20,6 +20,7 @@
     })();
     return {
       version: EXPORT_VERSION,
+      questionnaireVersion: typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1,
       savedAt: new Date().toISOString(),
       partnerNames: names,
       answersA: answers.A,
@@ -166,16 +167,26 @@
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
-    var sorted = QUESTIONS.slice().sort(function (a, b) { return a.id - b.id; });
+    var sorted = QUESTIONS.slice().sort(function (a, b) { return (typeof a.id === 'number' && typeof b.id === 'number') ? a.id - b.id : String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); });
+    var sectionOrder = [];
+    sorted.forEach(function (q) {
+      if (sectionOrder.indexOf(q.section) === -1) sectionOrder.push(q.section);
+    });
+    var navEl = document.getElementById('form-section-nav');
+    if (navEl) {
+      navEl.innerHTML = sectionOrder.map(function (secId) {
+        return '<a href="#section-' + escapeHtml(secId) + '">' + escapeHtml(sectionLabels[secId] || secId) + '</a>';
+      }).join('');
+    }
     var lastSection = null;
     var html = '';
     sorted.forEach(function (q) {
       if (q.section !== lastSection) {
         if (lastSection) html += '</div>';
         lastSection = q.section;
-        html += '<div class="section-block" data-section="' + escapeHtml(lastSection) + '"><h2>' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</h2>';
+        html += '<div class="section-block" id="section-' + escapeHtml(lastSection) + '" data-section="' + escapeHtml(lastSection) + '"><h2>' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</h2>';
       }
-      var name = 'q' + q.id;
+      var name = getAnswerKey(q);
       var existing = formData[currentPartner][name];
       if (q.type === 'text') {
         html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><textarea name="' + name + '" data-qid="' + q.id + '" placeholder="' + escapeHtml(q.placeholder || '') + '">' + escapeHtml(existing && existing.value ? existing.value : '') + '</textarea><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Notes (optional)" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
@@ -196,7 +207,7 @@
     const data = {};
     const container = document.getElementById('form-content');
     QUESTIONS.forEach((q) => {
-      const name = `q${q.id}`;
+      const name = getAnswerKey(q);
       if (q.type === 'text') {
         const el = container.querySelector(`textarea[name="${name}"]`);
         const notesEl = container.querySelector(`input[name="${name}_notes"]`);
@@ -224,7 +235,7 @@
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
-    var sorted = QUESTIONS.slice().sort(function (a, b) { return a.id - b.id; });
+    var sorted = QUESTIONS.slice().sort(function (a, b) { return (typeof a.id === 'number' && typeof b.id === 'number') ? a.id - b.id : String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); });
     var lastSection = null;
     var html = '<table class="compare-table"><thead><tr><th>Question</th><th class="partner-a">' + escapeHtml(labelA) + '</th><th class="partner-b">' + escapeHtml(labelB) + '</th></tr></thead><tbody>';
     sorted.forEach(function (q) {
@@ -232,7 +243,7 @@
         lastSection = q.section;
         html += '<tr class="section-row"><td colspan="3">' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</td></tr>';
       }
-      var name = 'q' + q.id;
+      var name = getAnswerKey(q);
       var aVal = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
       var aDisplay = typeof aVal === 'object' ? (aVal && aVal.value || '—') : (aVal || '—');
       var bVal = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
@@ -262,7 +273,7 @@
 
     function sectionHasAnyAnswer(questions, ansA, ansB) {
       for (var i = 0; i < questions.length; i++) {
-        var name = 'q' + questions[i].id;
+        var name = getAnswerKey(questions[i]);
         var vA = ansA[name] && (ansA[name].value !== undefined ? ansA[name].value : ansA[name]);
         var vB = ansB[name] && (ansB[name].value !== undefined ? ansB[name].value : ansB[name]);
         var hasA = vA != null && (typeof vA !== 'string' || vA.trim() !== '');
@@ -281,7 +292,7 @@
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
-    var sorted = QUESTIONS.slice().sort(function (a, b) { return a.id - b.id; });
+    var sorted = QUESTIONS.slice().sort(function (a, b) { return (typeof a.id === 'number' && typeof b.id === 'number') ? a.id - b.id : String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); });
     var sectionOrder = [];
     sorted.forEach(function (q) {
       if (sectionOrder.indexOf(q.section) === -1) sectionOrder.push(q.section);
@@ -322,7 +333,7 @@
 
       var qaRows = '';
       questions.forEach(function (q) {
-        var name = 'q' + q.id;
+        var name = getAnswerKey(q);
         var vA = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
         var vB = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
         var ansA = typeof vA === 'object' ? (vA && vA.value) : vA;
@@ -412,6 +423,12 @@
     const div = document.createElement('div');
     div.textContent = s;
     return div.innerHTML;
+  }
+
+  /** Storage key for a question: numeric id -> q1, q2; string id -> q_section_name (see FUTURE-PROOFING.md). */
+  function getAnswerKey(q) {
+    var id = q.id;
+    return typeof id === 'number' ? 'q' + id : 'q_' + String(id);
   }
 
   function showView(viewId) {
@@ -525,7 +542,7 @@
       saveAnswers(currentPartner, data);
       var unanswered = 0;
       QUESTIONS.forEach(function (q) {
-        var name = 'q' + q.id;
+        var name = getAnswerKey(q);
         var v = data[name];
         var val = v && (v.value !== undefined ? v.value : v);
         if (val == null || (typeof val === 'string' && val.trim() === '')) unanswered++;

@@ -41,6 +41,11 @@ var AgreementGenerator = (function () {
     return normalize(a) === normalize(b);
   }
 
+  function getAnswerKey(q) {
+    var id = q.id;
+    return typeof id === 'number' ? 'q' + id : 'q_' + String(id);
+  }
+
   /**
    * Recommend agreement type for a section from both partners' answers.
    * @param {Object} answersA - map of q1, q2, ... to { value, notes }
@@ -51,7 +56,7 @@ var AgreementGenerator = (function () {
   function recommendForSection(answersA, answersB, questions) {
     var sameCount = 0, oppositeCount = 0, total = 0;
     questions.forEach(function (q) {
-      var name = 'q' + q.id;
+      var name = getAnswerKey(q);
       var a = answersA[name];
       var b = answersB[name];
       var va = a && (a.value !== undefined ? a.value : a);
@@ -96,7 +101,7 @@ var AgreementGenerator = (function () {
   function summaryForPartner(answers, questions) {
     var parts = [];
     questions.forEach(function (q) {
-      var name = 'q' + q.id;
+      var name = getAnswerKey(q);
       var v = formatAnswer(answers[name]);
       if (v) parts.push(v);
     });
@@ -129,7 +134,7 @@ var AgreementGenerator = (function () {
     var summaryB = summaryForPartner(answersB, questions);
     var sameCount = 0, oppositeCount = 0, total = 0;
     questions.forEach(function (q) {
-      var name = 'q' + q.id;
+      var name = getAnswerKey(q);
       var va = answersA[name] && (answersA[name].value !== undefined ? answersA[name].value : answersA[name]);
       var vb = answersB[name] && (answersB[name].value !== undefined ? answersB[name].value : answersB[name]);
       if (normalize(va) === '' && normalize(vb) === '') return;
