@@ -1,12 +1,53 @@
 (function () {
+  const MAX_PARTNERS = 5;
+  const PARTNER_IDS = ['A', 'B', 'C', 'D', 'E'];
   const STORAGE_ANSWERS_A = 'polycule_answers_a';
   const STORAGE_ANSWERS_B = 'polycule_answers_b';
+  const STORAGE_ANSWERS_C = 'polycule_answers_c';
+  const STORAGE_ANSWERS_D = 'polycule_answers_d';
+  const STORAGE_ANSWERS_E = 'polycule_answers_e';
   const STORAGE_NAMES = 'polycule_names';
   const STORAGE_CONTRACT = 'polycule_contract';
-  const EXPORT_VERSION = 1;
+  const STORAGE_VALUES_A = 'polycule_values_a';
+  const STORAGE_VALUES_B = 'polycule_values_b';
+  const STORAGE_VALUES_C = 'polycule_values_c';
+  const STORAGE_VALUES_D = 'polycule_values_d';
+  const STORAGE_VALUES_E = 'polycule_values_e';
+  const STORAGE_VALUES_RELATIONSHIPS = 'polycule_values_relationships';
+  const EXPORT_VERSION = 2;
+  const VALUES_COUNT = 5;
+  const MY_PARTNER_KEY = 'polycule_my_partner';
+  const PARTNER_COUNT_KEY = 'polycule_partner_count';
+
+  var ANSWERS_KEYS = { A: 'polycule_answers_a', B: 'polycule_answers_b', C: 'polycule_answers_c', D: 'polycule_answers_d', E: 'polycule_answers_e' };
+  var VALUES_KEYS = { A: 'polycule_values_a', B: 'polycule_values_b', C: 'polycule_values_c', D: 'polycule_values_d', E: 'polycule_values_e' };
 
   let currentPartner = 'A';
-  let formData = { A: {}, B: {} };
+
+  function getPartnerCount() {
+    try {
+      var n = parseInt(sessionStorage.getItem(PARTNER_COUNT_KEY), 10);
+      return (n >= 2 && n <= MAX_PARTNERS) ? n : 2;
+    } catch (_) { return 2; }
+  }
+
+  function setPartnerCount(n) {
+    try {
+      sessionStorage.setItem(PARTNER_COUNT_KEY, String(Math.max(2, Math.min(MAX_PARTNERS, n))));
+    } catch (_) {}
+  }
+
+  function getPartnerIds() {
+    return PARTNER_IDS.slice(0, getPartnerCount());
+  }
+
+  function getMyPartner() {
+    try {
+      var p = sessionStorage.getItem(MY_PARTNER_KEY);
+      return (PARTNER_IDS.indexOf(p) >= 0) ? p : 'A';
+    } catch (_) { return 'A'; }
+  }
+  let formData = {};
 
   function buildExportData() {
     const names = getNames();
@@ -18,14 +59,25 @@
       }
       return '';
     })();
+    var vals = getValues();
+    var ids = getPartnerIds();
+    var answersByPartner = {};
+    var valuesByPartner = {};
+    ids.forEach(function (id) { answersByPartner[id] = answers[id] || {}; valuesByPartner[id] = vals[id] || []; });
     return {
       version: EXPORT_VERSION,
       questionnaireVersion: typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1,
       savedAt: new Date().toISOString(),
+      partnerCount: getPartnerCount(),
       partnerNames: names,
+      answersByPartner: answersByPartner,
       answersA: answers.A,
       answersB: answers.B,
       contract: contract,
+      valuesByPartner: valuesByPartner,
+      valuesA: vals.A,
+      valuesB: vals.B,
+      valuesRelationships: getValuesRelationships(),
       agreementText: agreementText,
     };
   }
@@ -45,30 +97,73 @@
 
   function saveSessionToFile() {
     const data = buildExportData();
-    const nameA = safeFilenamePart(data.partnerNames.A);
-    const nameB = safeFilenamePart(data.partnerNames.B);
+    var ids = getPartnerIds();
+    var nameParts = ids.map(function (id) { return safeFilenamePart(data.partnerNames[id]); }).filter(Boolean);
     const date = new Date().toISOString().slice(0, 10);
-    const base = nameA && nameB ? 'polycule-' + nameA + '-' + nameB + '-' + date : 'polycule-session-' + date;
+    const base = nameParts.length ? 'polycule-' + nameParts.join('-') + '-' + date : 'polycule-session-' + date;
     const filename = base + '.polycule';
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     downloadBlob(blob, filename);
   }
 
+  var SESSION_QUESTIONNAIRE_VERSION_KEY = 'polycule_session_questionnaire_version';
+  var SAVED_QUESTIONNAIRE_VERSION_KEY = 'polycule_questionnaire_version';
+
   function applySessionData(data) {
     if (data.version == null || data.partnerNames == null) return false;
-    localStorage.setItem(STORAGE_NAMES, JSON.stringify(data.partnerNames || { A: '', B: '' }));
-    localStorage.setItem(STORAGE_ANSWERS_A, JSON.stringify(data.answersA || {}));
-    localStorage.setItem(STORAGE_ANSWERS_B, JSON.stringify(data.answersB || {}));
+    var names = data.partnerNames || {};
+    var count = (data.partnerCount >= 2 && data.partnerCount <= MAX_PARTNERS) ? data.partnerCount : 2;
+    setPartnerCount(count);
+    var ids = PARTNER_IDS.slice(0, count);
+    ids.forEach(function (id) { if (!names[id]) names[id] = ''; });
+    localStorage.setItem(STORAGE_NAMES, JSON.stringify(names));
+    var byPartner = data.answersByPartner || {};
+    if (!Object.keys(byPartner).length) {
+      PARTNER_IDS.forEach(function (id) {
+        var key = 'answers' + id;
+        if (data[key] != null) byPartner[id] = data[key];
+      });
+      if (!Object.keys(byPartner).length && (data.answersA != null || data.answersB != null)) {
+        byPartner.A = data.answersA || {};
+        byPartner.B = data.answersB || {};
+      }
+    }
+    ids.forEach(function (id) {
+      var ans = byPartner[id] || {};
+      var key = ANSWERS_KEYS[id];
+      if (key) localStorage.setItem(key, JSON.stringify(ans));
+    });
     localStorage.setItem(STORAGE_CONTRACT, JSON.stringify(data.contract || {}));
-    formData = { A: data.answersA || {}, B: data.answersB || {} };
-    var nameA = document.getElementById('name-a');
-    var nameB = document.getElementById('name-b');
-    if (nameA) nameA.value = (data.partnerNames && data.partnerNames.A) || '';
-    if (nameB) nameB.value = (data.partnerNames && data.partnerNames.B) || '';
-    currentPartner = 'A';
+    var valsByPartner = data.valuesByPartner || {};
+    if (!Object.keys(valsByPartner).length) {
+      PARTNER_IDS.forEach(function (id) {
+        var key = 'values' + id;
+        if (data[key] != null) valsByPartner[id] = Array.isArray(data[key]) ? data[key] : [];
+      });
+      if (!Object.keys(valsByPartner).length && (data.valuesA != null || data.valuesB != null)) {
+        valsByPartner.A = Array.isArray(data.valuesA) ? data.valuesA : [];
+        valsByPartner.B = Array.isArray(data.valuesB) ? data.valuesB : [];
+      }
+    }
+    ids.forEach(function (id) {
+      var arr = Array.isArray(valsByPartner[id]) ? valsByPartner[id] : [];
+      var key = VALUES_KEYS[id];
+      if (key) localStorage.setItem(key, JSON.stringify(arr));
+    });
+    if (Array.isArray(data.valuesRelationships)) localStorage.setItem(STORAGE_VALUES_RELATIONSHIPS, JSON.stringify(data.valuesRelationships));
+    if (data.questionnaireVersion != null) {
+      try { sessionStorage.setItem(SESSION_QUESTIONNAIRE_VERSION_KEY, String(data.questionnaireVersion)); } catch (_) {}
+    }
+    formData = {};
+    ids.forEach(function (id) { formData[id] = byPartner[id] || {}; });
+    currentPartner = getMyPartner();
+    var myNameEl = document.getElementById('my-name');
+    if (myNameEl) myNameEl.value = (names[currentPartner]) || '';
     renderForm();
     renderCompare();
     renderContract();
+    renderValues();
+    renderValuesEvaluation();
     updateContractDoc();
     return true;
   }
@@ -91,9 +186,14 @@
   };
 
   function hasCurrentData() {
-    const names = getNames();
-    const answers = getAnswers();
-    return (names.A || names.B) || Object.keys(answers.A).length > 0 || Object.keys(answers.B).length > 0;
+    var names = getNames();
+    var answers = getAnswers();
+    var ids = getPartnerIds();
+    for (var i = 0; i < ids.length; i++) {
+      if (names[ids[i]]) return true;
+      if (Object.keys(answers[ids[i]] || {}).length > 0) return true;
+    }
+    return false;
   }
 
   function exportAgreementAsFile() {
@@ -114,20 +214,25 @@
 
   function getNames() {
     try {
-      const j = localStorage.getItem(STORAGE_NAMES);
-      return j ? JSON.parse(j) : { A: '', B: '' };
-    } catch (_) { return { A: '', B: '' }; }
+      var j = localStorage.getItem(STORAGE_NAMES);
+      var o = j ? JSON.parse(j) : {};
+      var ids = getPartnerIds();
+      ids.forEach(function (id) { if (o[id] === undefined) o[id] = ''; });
+      return o;
+    } catch (_) { var o = {}; getPartnerIds().forEach(function (id) { o[id] = ''; }); return o; }
   }
 
   function getAnswers() {
     try {
-      const a = localStorage.getItem(STORAGE_ANSWERS_A);
-      const b = localStorage.getItem(STORAGE_ANSWERS_B);
-      return {
-        A: a ? JSON.parse(a) : {},
-        B: b ? JSON.parse(b) : {},
-      };
-    } catch (_) { return { A: {}, B: {} }; }
+      var out = {};
+      getPartnerIds().forEach(function (id) {
+        var key = ANSWERS_KEYS[id];
+        if (!key) return;
+        var raw = localStorage.getItem(key);
+        out[id] = raw ? JSON.parse(raw) : {};
+      });
+      return out;
+    } catch (_) { var o = {}; getPartnerIds().forEach(function (id) { o[id] = {}; }); return o; }
   }
 
   function getContract() {
@@ -137,14 +242,48 @@
     } catch (_) { return {}; }
   }
 
+  function getValues() {
+    try {
+      var out = {};
+      getPartnerIds().forEach(function (id) {
+        var key = VALUES_KEYS[id];
+        if (!key) return;
+        var raw = localStorage.getItem(key);
+        var arr = raw ? JSON.parse(raw) : null;
+        out[id] = Array.isArray(arr) ? arr : [];
+      });
+      return out;
+    } catch (_) { var o = {}; getPartnerIds().forEach(function (id) { o[id] = []; }); return o; }
+  }
+
+  function saveValues(partner, list) {
+    var arr = Array.isArray(list) ? list.slice(0, VALUES_COUNT) : [];
+    var key = VALUES_KEYS[partner];
+    if (key) localStorage.setItem(key, JSON.stringify(arr));
+  }
+
+  function getValuesRelationships() {
+    try {
+      const j = localStorage.getItem(STORAGE_VALUES_RELATIONSHIPS);
+      var arr = j ? JSON.parse(j) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+  }
+
+  function saveValuesRelationships(rels) {
+    localStorage.setItem(STORAGE_VALUES_RELATIONSHIPS, JSON.stringify(Array.isArray(rels) ? rels : []));
+  }
+
   function saveAnswers(partner, data) {
-    const key = partner === 'A' ? STORAGE_ANSWERS_A : STORAGE_ANSWERS_B;
-    localStorage.setItem(key, JSON.stringify(data));
+    var key = ANSWERS_KEYS[partner];
+    if (key) localStorage.setItem(key, JSON.stringify(data));
     formData[partner] = data;
   }
 
   function saveNames() {
-    const names = { A: document.getElementById('name-a').value.trim(), B: document.getElementById('name-b').value.trim() };
+    var names = getNames();
+    var myNameEl = document.getElementById('my-name');
+    if (myNameEl) names[currentPartner] = myNameEl.value.trim();
     localStorage.setItem(STORAGE_NAMES, JSON.stringify(names));
   }
 
@@ -160,10 +299,13 @@
   }
 
   function renderForm() {
-    const container = document.getElementById('form-content');
-    const names = getNames();
-    document.getElementById('name-a').value = names.A;
-    document.getElementById('name-b').value = names.B;
+    var container = document.getElementById('form-content');
+    currentPartner = getMyPartner();
+    var names = getNames();
+    var myNameEl = document.getElementById('my-name');
+    if (myNameEl) myNameEl.value = names[currentPartner] || '';
+    var partnerLabel = document.getElementById('partner-label');
+    if (partnerLabel) partnerLabel.textContent = "You're answering as Partner " + currentPartner + ".";
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
@@ -222,36 +364,157 @@
   }
 
   function renderCompare() {
-    const container = document.getElementById('compare-content');
-    const names = getNames();
-    const labelA = names.A || 'Partner A';
-    const labelB = names.B || 'Partner B';
-    const answers = getAnswers();
-
-    if (!Object.keys(answers.A).length && !Object.keys(answers.B).length) {
-      container.innerHTML = '<p class="compare-empty">No answers saved yet. Fill out the questionnaire for both partners first.</p>';
+    var container = document.getElementById('compare-content');
+    var names = getNames();
+    var answers = getAnswers();
+    var ids = getPartnerIds();
+    var hasAny = ids.some(function (id) { return Object.keys(answers[id] || {}).length > 0; });
+    if (!hasAny) {
+      container.innerHTML = '<p class="compare-empty">No answers saved yet. Fill out the questionnaire for each partner first.</p>';
       return;
     }
-
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
     var sorted = QUESTIONS.slice().sort(function (a, b) { return (typeof a.id === 'number' && typeof b.id === 'number') ? a.id - b.id : String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); });
     var lastSection = null;
-    var html = '<table class="compare-table"><thead><tr><th>Question</th><th class="partner-a">' + escapeHtml(labelA) + '</th><th class="partner-b">' + escapeHtml(labelB) + '</th></tr></thead><tbody>';
+    var headerCells = '<th>Question</th>' + ids.map(function (id) { return '<th class="partner-col">' + escapeHtml(names[id] || 'Partner ' + id) + '</th>'; }).join('');
+    var html = '<table class="compare-table"><thead><tr>' + headerCells + '</tr></thead><tbody>';
+    var colCount = ids.length + 1;
     sorted.forEach(function (q) {
       if (q.section !== lastSection) {
         lastSection = q.section;
-        html += '<tr class="section-row"><td colspan="3">' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</td></tr>';
+        html += '<tr class="section-row"><td colspan="' + colCount + '">' + escapeHtml(sectionLabels[lastSection] || lastSection) + '</td></tr>';
       }
       var name = getAnswerKey(q);
-      var aVal = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
-      var aDisplay = typeof aVal === 'object' ? (aVal && aVal.value || '—') : (aVal || '—');
-      var bVal = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
-      var bDisplay = typeof bVal === 'object' ? (bVal && bVal.value || '—') : (bVal || '—');
-      html += '<tr><th>' + escapeHtml(q.text) + '</th><td class="answer">' + escapeHtml(String(aDisplay)) + '</td><td class="answer">' + escapeHtml(String(bDisplay)) + '</td></tr>';
+      var cells = ids.map(function (id) {
+        var val = answers[id][name];
+        var v = val && val.value !== undefined ? val.value : val;
+        var display = typeof v === 'object' ? (v && v.value || '—') : (v || '—');
+        return '<td class="answer">' + escapeHtml(String(display)) + '</td>';
+      }).join('');
+      html += '<tr><th>' + escapeHtml(q.text) + '</th>' + cells + '</tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;
+  }
+
+  function renderValues() {
+    var listEl = document.getElementById('values-rank-list');
+    if (!listEl) return;
+    var partner = getMyPartner();
+    var vals = getValues()[partner] || [];
+    while (vals.length < VALUES_COUNT) vals.push('');
+    vals = vals.slice(0, VALUES_COUNT);
+    listEl.innerHTML = vals.map(function (v, i) {
+      return '<li data-index="' + i + '"><button type="button" class="rank-btn" data-move="up" aria-label="Move up">↑</button><button type="button" class="rank-btn" data-move="down" aria-label="Move down">↓</button><input type="text" maxlength="40" placeholder="One word" value="' + escapeHtml(String(v || '')) + '" data-value-index="' + i + '" />';
+    }).join('');
+    listEl.querySelectorAll('input[data-value-index]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        var idx = parseInt(input.dataset.valueIndex, 10);
+        var li = input.closest('li');
+        if (li) li.dataset.index = idx;
+      });
+    });
+    listEl.querySelectorAll('.rank-btn[data-move="up"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var li = btn.closest('li');
+        var prev = li && li.previousElementSibling;
+        if (prev) swapValuesListItems(listEl, prev, li);
+      });
+    });
+    listEl.querySelectorAll('.rank-btn[data-move="down"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var li = btn.closest('li');
+        var next = li && li.nextElementSibling;
+        if (next) swapValuesListItems(listEl, li, next);
+      });
+    });
+  }
+
+  function swapValuesListItems(listEl, li1, li2) {
+    var inputs = [li1, li2].map(function (li) { return li.querySelector('input'); }).filter(Boolean);
+    var v0 = inputs[0] ? inputs[0].value.trim() : '';
+    var v1 = inputs[1] ? inputs[1].value.trim() : '';
+    if (inputs[0]) inputs[0].value = v1;
+    if (inputs[1]) inputs[1].value = v0;
+  }
+
+  function collectValuesFromList() {
+    var listEl = document.getElementById('values-rank-list');
+    if (!listEl) return [];
+    var inputs = listEl.querySelectorAll('input[data-value-index]');
+    var arr = [];
+    for (var i = 0; i < inputs.length; i++) arr.push(inputs[i].value.trim());
+    while (arr.length < VALUES_COUNT) arr.push('');
+    return arr.slice(0, VALUES_COUNT);
+  }
+
+  function renderValuesEvaluation() {
+    var evalBlock = document.getElementById('values-evaluation');
+    var listA = document.getElementById('values-eval-list-a');
+    var listB = document.getElementById('values-eval-list-b');
+    var selectA = document.getElementById('values-eval-select-a');
+    var selectB = document.getElementById('values-eval-select-b');
+    var addBtn = document.getElementById('values-eval-add-btn');
+    var relList = document.getElementById('values-eval-relationships');
+    var names = getNames();
+    var labelA = names.A || 'Partner A';
+    var labelB = names.B || 'Partner B';
+    var vals = getValues();
+    var arrA = Array.isArray(vals.A) ? vals.A : [];
+    var arrB = Array.isArray(vals.B) ? vals.B : [];
+    var hasBoth = arrA.length >= VALUES_COUNT && arrB.length >= VALUES_COUNT;
+    if (!evalBlock) return;
+    evalBlock.style.display = hasBoth ? 'block' : 'none';
+    if (!hasBoth) return;
+    if (listA) {
+      listA.innerHTML = arrA.filter(Boolean).map(function (v) { return '<li>' + escapeHtml(v) + '</li>'; }).join('');
+    }
+    if (listB) {
+      listB.innerHTML = arrB.filter(Boolean).map(function (v) { return '<li>' + escapeHtml(v) + '</li>'; }).join('');
+    }
+    document.getElementById('values-eval-label-a').textContent = labelA;
+    document.getElementById('values-eval-label-b').textContent = labelB;
+    if (selectA) {
+      selectA.innerHTML = arrA.filter(Boolean).map(function (v) { return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; }).join('');
+    }
+    if (selectB) {
+      selectB.innerHTML = arrB.filter(Boolean).map(function (v) { return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; }).join('');
+    }
+    var rels = getValuesRelationships();
+    var typeLabel = function (t) {
+      if (t === 'same') return 'Same in practice';
+      if (t === 'complement') return 'Complements';
+      if (t === 'opposition') return 'In opposition';
+      return t;
+    };
+    if (relList) {
+      relList.innerHTML = rels.map(function (r, i) {
+        return '<li><span>' + escapeHtml(r.a) + ' ↔ ' + escapeHtml(r.b) + ': ' + escapeHtml(typeLabel(r.type)) + '</span> <button type="button" class="remove-rel" data-rel-index="' + i + '">Remove</button></li>';
+      }).join('');
+      relList.querySelectorAll('.remove-rel').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var idx = parseInt(btn.dataset.relIndex, 10);
+          var next = getValuesRelationships().slice();
+          next.splice(idx, 1);
+          saveValuesRelationships(next);
+          renderValuesEvaluation();
+        });
+      });
+    }
+    if (addBtn) {
+      addBtn.onclick = function () {
+        var aVal = selectA && selectA.value;
+        var bVal = selectB && selectB.value;
+        var typeEl = document.getElementById('values-eval-type');
+        var type = typeEl ? typeEl.value : 'same';
+        if (!aVal || !bVal) return;
+        var next = getValuesRelationships().slice();
+        next.push({ a: aVal, b: bVal, type: type });
+        saveValuesRelationships(next);
+        renderValuesEvaluation();
+      };
+    }
   }
 
   function getRecommendationLabel(value) {
@@ -261,31 +524,28 @@
   }
 
   function renderContract() {
-    const container = document.getElementById('contract-content');
-    const recommendBar = document.getElementById('contract-recommend-bar');
-    const names = getNames();
-    const labelA = names.A || 'Partner A';
-    const labelB = names.B || 'Partner B';
+    var container = document.getElementById('contract-content');
+    var names = getNames();
     var answers = getAnswers();
-    answers.A = answers.A || {};
-    answers.B = answers.B || {};
+    var ids = getPartnerIds();
     var contract = getContract();
 
-    function sectionHasAnyAnswer(questions, ansA, ansB) {
+    function sectionHasAnyAnswer(questions, answersByPartner) {
       for (var i = 0; i < questions.length; i++) {
         var name = getAnswerKey(questions[i]);
-        var vA = ansA[name] && (ansA[name].value !== undefined ? ansA[name].value : ansA[name]);
-        var vB = ansB[name] && (ansB[name].value !== undefined ? ansB[name].value : ansB[name]);
-        var hasA = vA != null && (typeof vA !== 'string' || vA.trim() !== '');
-        var hasB = vB != null && (typeof vB !== 'string' || vB.trim() !== '');
-        if (hasA || hasB) return true;
+        for (var k = 0; k < ids.length; k++) {
+          var ans = answersByPartner[ids[k]] || {};
+          var v = ans[name] && (ans[name].value !== undefined ? ans[name].value : ans[name]);
+          if (v != null && (typeof v !== 'string' || v.trim() !== '')) return true;
+        }
       }
       return false;
     }
 
-    var recommendations = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations
-      ? AgreementGenerator.getRecommendations(answers.A, answers.B)
-      : {};
+    var recommendations = {};
+    if (ids.length === 2 && typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations) {
+      recommendations = AgreementGenerator.getRecommendations(answers.A || {}, answers.B || {});
+    }
     var getLongform = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendationLongform
       ? AgreementGenerator.getRecommendationLongform
       : function () { return ''; };
@@ -301,12 +561,12 @@
     var hasIncompleteSection = false;
     sectionOrder.forEach(function (secId) {
       var questions = sorted.filter(function (q) { return q.section === secId; });
-      if (questions.length && !sectionHasAnyAnswer(questions, answers.A, answers.B)) hasIncompleteSection = true;
+      if (questions.length && !sectionHasAnyAnswer(questions, answers)) hasIncompleteSection = true;
     });
 
     for (var secId in recommendations) {
       var questionsForSec = sorted.filter(function (q) { return q.section === secId; });
-      if (!sectionHasAnyAnswer(questionsForSec, answers.A, answers.B)) continue;
+      if (!sectionHasAnyAnswer(questionsForSec, answers)) continue;
       var c = contract[secId] || {};
       if (!c.agreement) {
         saveContractSection(secId, recommendations[secId], c.notes || '', c.discussionOutcome || '');
@@ -318,29 +578,34 @@
     if (hasIncompleteSection) {
       html += '<p class="contract-incomplete-banner">Some questions are still unanswered. Sections with no answers yet are marked below; you can still view and edit the rest of the contract.</p>';
     }
+    var labelA = names.A || 'Partner A';
+    var labelB = names.B || 'Partner B';
     sectionOrder.forEach(function (secId) {
       var questions = sorted.filter(function (q) { return q.section === secId; });
       if (!questions.length) return;
       var sectionLabel = sectionLabels[secId] || secId;
-      if (!sectionHasAnyAnswer(questions, answers.A, answers.B)) {
-        html += '<div class="contract-section contract-section-incomplete" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabel) + '</h3><p class="contract-section-placeholder">This section still needs both partners to complete their answers in the Questionnaire tab.</p></div>';
+      if (!sectionHasAnyAnswer(questions, answers)) {
+        html += '<div class="contract-section contract-section-incomplete" data-section="' + secId + '"><h3>' + escapeHtml(sectionLabel) + '</h3><p class="contract-section-placeholder">This section still needs all partners to complete their answers in the Questionnaire tab.</p></div>';
         return;
       }
       var secContract = contract[secId] || {};
       var recommended = recommendations[secId] || 'discuss';
       var agree = secContract.agreement || recommended;
-      var longform = getLongform(sectionLabel, questions, answers.A, answers.B, agree, labelA, labelB);
+      var longform = (ids.length === 2)
+        ? getLongform(sectionLabel, questions, answers.A || {}, answers.B || {}, agree, labelA, labelB)
+        : 'Review each partner\'s answers below and discuss how you want to frame this section together. Use the notes to record decisions.';
 
       var qaRows = '';
       questions.forEach(function (q) {
         var name = getAnswerKey(q);
-        var vA = answers.A[name] && answers.A[name].value !== undefined ? answers.A[name].value : answers.A[name];
-        var vB = answers.B[name] && answers.B[name].value !== undefined ? answers.B[name].value : answers.B[name];
-        var ansA = typeof vA === 'object' ? (vA && vA.value) : vA;
-        var ansB = typeof vB === 'object' ? (vB && vB.value) : vB;
-        if (!ansA) ansA = '—';
-        if (!ansB) ansB = '—';
-        qaRows += '<div class="contract-qa-row"><span class="contract-qa-q"><span class="q-num">' + q.id + '.</span> ' + escapeHtml(q.text) + '</span><span class="contract-qa-a"><span class="qa-label">' + escapeHtml(labelA) + '</span>' + escapeHtml(String(ansA)) + '</span><span class="contract-qa-b"><span class="qa-label">' + escapeHtml(labelB) + '</span>' + escapeHtml(String(ansB)) + '</span></div>';
+        var partnerCells = ids.map(function (id) {
+          var v = answers[id] && (answers[id][name] && answers[id][name].value !== undefined ? answers[id][name].value : answers[id][name]);
+          var ans = typeof v === 'object' ? (v && v.value) : v;
+          if (!ans) ans = '—';
+          var label = names[id] || 'Partner ' + id;
+          return '<span class="contract-qa-partner"><span class="qa-label">' + escapeHtml(label) + '</span>' + escapeHtml(String(ans)) + '</span>';
+        }).join('');
+        qaRows += '<div class="contract-qa-row"><span class="contract-qa-q"><span class="q-num">' + q.id + '.</span> ' + escapeHtml(q.text) + '</span>' + partnerCells + '</div>';
       });
       var notes = secContract.notes || '';
       var discussionOutcome = secContract.discussionOutcome || '';
@@ -375,18 +640,18 @@
   }
 
   function updateContractDoc() {
-    const docEl = document.getElementById('contract-doc');
-    const names = getNames();
-    const answers = getAnswers();
-    const contract = getContract();
-
+    var docEl = document.getElementById('contract-doc');
+    var names = getNames();
+    var answers = getAnswers();
+    var contract = getContract();
+    var ids = getPartnerIds();
+    var hasAny = ids.some(function (id) { return Object.keys(answers[id] || {}).length > 0; });
     if (!docEl) return;
-    if (!Object.keys(answers.A).length && !Object.keys(answers.B).length) {
+    if (!hasAny) {
       docEl.style.display = 'none';
       return;
     }
-
-    const fullText = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.generateFullAgreement
+    var fullText = (ids.length === 2 && typeof AgreementGenerator !== 'undefined' && AgreementGenerator.generateFullAgreement)
       ? AgreementGenerator.generateFullAgreement(names, answers, contract)
       : buildLegacyContractText(names, contract);
     docEl.textContent = fullText;
@@ -394,11 +659,11 @@
   }
 
   function buildLegacyContractText(names, contract) {
-    const labelA = names.A || 'Partner A';
-    const labelB = names.B || 'Partner B';
-    const lines = [];
+    var ids = getPartnerIds();
+    var labels = ids.map(function (id) { return names[id] || 'Partner ' + id; }).filter(Boolean);
+    var lines = [];
     lines.push('RELATIONSHIP CONTRACT (DRAFT)');
-    lines.push(`${labelA} & ${labelB}`);
+    lines.push(labels.length ? labels.join(', ') : 'Partners');
     lines.push('');
     SECTIONS.forEach((sec) => {
       const c = contract[sec.id];
@@ -440,6 +705,10 @@
     if (btn) btn.classList.add('active');
     if (viewId === 'compare') renderCompare();
     if (viewId === 'contract') renderContract();
+    if (viewId === 'values') {
+      renderValues();
+      renderValuesEvaluation();
+    }
   }
 
   var SESSION_ID_KEY = 'polycule_cloud_session_id';
@@ -452,12 +721,38 @@
     if (app) app.classList.remove('active');
   }
 
+  var NEW_QUESTIONS_BANNER_DISMISSED_KEY = 'polycule_new_questions_banner_dismissed';
+
+  function updateNewQuestionsBanner() {
+    var banner = document.getElementById('new-questions-banner');
+    if (!banner) return;
+    var currentVersion = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
+    var storedVersion = null;
+    try {
+      var v = sessionStorage.getItem(SESSION_QUESTIONNAIRE_VERSION_KEY);
+      if (v != null) storedVersion = parseInt(v, 10);
+      if (storedVersion == null) {
+        v = localStorage.getItem(SAVED_QUESTIONNAIRE_VERSION_KEY);
+        if (v != null) storedVersion = parseInt(v, 10);
+      }
+      if (storedVersion == null || isNaN(storedVersion)) storedVersion = 1;
+    } catch (_) { storedVersion = 1; }
+    var dismissed = null;
+    try { dismissed = sessionStorage.getItem(NEW_QUESTIONS_BANNER_DISMISSED_KEY); } catch (_) {}
+    if (storedVersion < currentVersion && dismissed !== String(currentVersion)) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
   function showAppPage() {
     var setup = document.getElementById('page-setup');
     var app = document.getElementById('page-app');
     if (setup) setup.classList.remove('active');
     if (app) app.classList.add('active');
     updateSessionStrip();
+    updateNewQuestionsBanner();
   }
 
   function updateSessionStrip() {
@@ -494,23 +789,42 @@
     try {
       sessionStorage.removeItem(SESSION_ID_KEY);
       sessionStorage.removeItem(SESSION_CODE_KEY);
+      sessionStorage.removeItem(SESSION_QUESTIONNAIRE_VERSION_KEY);
+      sessionStorage.removeItem(PARTNER_COUNT_KEY);
     } catch (_) {}
-    localStorage.removeItem(STORAGE_ANSWERS_A);
-    localStorage.removeItem(STORAGE_ANSWERS_B);
+    PARTNER_IDS.forEach(function (id) {
+      var ak = ANSWERS_KEYS[id];
+      var vk = VALUES_KEYS[id];
+      if (ak) localStorage.removeItem(ak);
+      if (vk) localStorage.removeItem(vk);
+    });
     localStorage.removeItem(STORAGE_NAMES);
     localStorage.removeItem(STORAGE_CONTRACT);
-    formData = { A: {}, B: {} };
+    localStorage.removeItem(STORAGE_VALUES_RELATIONSHIPS);
+    try { sessionStorage.removeItem(MY_PARTNER_KEY); } catch (_) {}
+    formData = {};
     currentPartner = 'A';
     if (window.polyculeShowSetupPage) window.polyculeShowSetupPage();
   }
 
   function init() {
     formData = getAnswers();
-    currentPartner = document.querySelector('input[name="who"]:checked')?.value || 'A';
+    currentPartner = getMyPartner();
     renderForm();
 
     var startOverBtn = document.getElementById('btn-start-over');
     if (startOverBtn) startOverBtn.addEventListener('click', startOver);
+
+    var dismissBtn = document.getElementById('new-questions-banner-dismiss');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', function () {
+        try {
+          var qv = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
+          sessionStorage.setItem(NEW_QUESTIONS_BANNER_DISMISSED_KEY, String(qv));
+        } catch (_) {}
+        updateNewQuestionsBanner();
+      });
+    }
 
     try {
       if (sessionStorage.getItem(SESSION_ID_KEY)) {
@@ -522,24 +836,31 @@
       if (window.polyculeShowSetupPage) window.polyculeShowSetupPage();
     }
 
-    document.querySelectorAll('input[name="who"]').forEach((r) => {
-      r.addEventListener('change', () => {
-        saveNames();
-        const prev = collectFormData();
-        saveAnswers(currentPartner, prev);
-        currentPartner = r.value;
-        formData = getAnswers();
-        renderForm();
+    var btnUseLocal = document.getElementById('btn-use-local');
+    if (btnUseLocal) {
+      btnUseLocal.addEventListener('click', function () {
+        try {
+          sessionStorage.setItem(SESSION_ID_KEY, 'local');
+          sessionStorage.setItem(PARTNER_COUNT_KEY, '2');
+          sessionStorage.setItem(MY_PARTNER_KEY, 'A');
+        } catch (_) {}
+        window.location.reload();
       });
-    });
+    }
 
-    document.getElementById('name-a').addEventListener('change', saveNames);
-    document.getElementById('name-b').addEventListener('change', saveNames);
+    var myNameEl = document.getElementById('my-name');
+    if (myNameEl) myNameEl.addEventListener('change', saveNames);
+    if (myNameEl) myNameEl.addEventListener('blur', saveNames);
 
     document.getElementById('btn-save').addEventListener('click', function () {
       saveNames();
       var data = collectFormData();
       saveAnswers(currentPartner, data);
+      try {
+        var qv = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
+        localStorage.setItem(SAVED_QUESTIONNAIRE_VERSION_KEY, String(qv));
+        sessionStorage.setItem(SESSION_QUESTIONNAIRE_VERSION_KEY, String(qv));
+      } catch (_) {}
       var unanswered = 0;
       QUESTIONS.forEach(function (q) {
         var name = getAnswerKey(q);
@@ -555,6 +876,22 @@
       }
       if (window.polyculeSaveToCloudIfSession) window.polyculeSaveToCloudIfSession();
     });
+
+    var btnSaveValues = document.getElementById('btn-save-values');
+    if (btnSaveValues) {
+      btnSaveValues.addEventListener('click', function () {
+        var arr = collectValuesFromList();
+        saveValues(getMyPartner(), arr);
+        var status = document.getElementById('values-save-status');
+        if (status) {
+          status.style.display = 'inline';
+          status.textContent = 'Saved.';
+          setTimeout(function () { status.style.display = 'none'; }, 2000);
+        }
+        renderValuesEvaluation();
+        if (window.polyculeSaveToCloudIfSession) window.polyculeSaveToCloudIfSession();
+      });
+    }
 
     document.querySelectorAll('nav button[data-view]').forEach((btn) => {
       btn.addEventListener('click', () => {

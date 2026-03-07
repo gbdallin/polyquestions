@@ -8,22 +8,61 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 var url = typeof window !== 'undefined' && window.POLYCULE_SUPABASE_URL;
 var key = typeof window !== 'undefined' && window.POLYCULE_SUPABASE_ANON_KEY;
 if (!url || !key) {
-  // Cloud disabled; config.js not set up. Show message on setup page.
-  document.addEventListener('DOMContentLoaded', function () {
+  // Cloud disabled; config.js not set up. Show message (Use locally button is in HTML, wired in app.js).
+  function showNoCloudMsg() {
     var codeBar = document.getElementById('code-bar');
     if (codeBar) codeBar.style.display = 'none';
     var msg = document.getElementById('setup-no-cloud-msg');
     if (msg) msg.style.display = 'block';
-  });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showNoCloudMsg);
+  } else {
+    showNoCloudMsg();
+  }
 } else {
 var supabase = createClient(url, key);
 
   var STORAGE_ANSWERS_A = 'polycule_answers_a';
   var STORAGE_ANSWERS_B = 'polycule_answers_b';
+  var STORAGE_ANSWERS_C = 'polycule_answers_c';
+  var STORAGE_ANSWERS_D = 'polycule_answers_d';
+  var STORAGE_ANSWERS_E = 'polycule_answers_e';
   var STORAGE_NAMES = 'polycule_names';
   var STORAGE_CONTRACT = 'polycule_contract';
+  var STORAGE_VALUES_A = 'polycule_values_a';
+  var STORAGE_VALUES_B = 'polycule_values_b';
+  var STORAGE_VALUES_C = 'polycule_values_c';
+  var STORAGE_VALUES_D = 'polycule_values_d';
+  var STORAGE_VALUES_E = 'polycule_values_e';
+  var STORAGE_VALUES_RELATIONSHIPS = 'polycule_values_relationships';
   var SESSION_ID_KEY = 'polycule_cloud_session_id';
   var SESSION_CODE_KEY = 'polycule_cloud_session_code';
+  var MY_PARTNER_KEY = 'polycule_my_partner';
+  var PARTNER_COUNT_KEY = 'polycule_partner_count';
+  var ANSWER_KEYS = ['polycule_answers_a', 'polycule_answers_b', 'polycule_answers_c', 'polycule_answers_d', 'polycule_answers_e'];
+  var VALUE_KEYS = ['polycule_values_a', 'polycule_values_b', 'polycule_values_c', 'polycule_values_d', 'polycule_values_e'];
+
+  function setMyPartner(p) {
+    try {
+      var valid = ['A', 'B', 'C', 'D', 'E'];
+      sessionStorage.setItem(MY_PARTNER_KEY, valid.indexOf(p) >= 0 ? p : 'A');
+    } catch (_) {}
+  }
+
+  function getMyPartnerFromStorage() {
+    try {
+      var p = sessionStorage.getItem(MY_PARTNER_KEY);
+      return ['A', 'B', 'C', 'D', 'E'].indexOf(p) >= 0 ? p : 'A';
+    } catch (_) { return 'A'; }
+  }
+
+  function getNamesFromStorage() {
+    try {
+      var j = localStorage.getItem(STORAGE_NAMES);
+      return j ? JSON.parse(j) : { A: '', B: '' };
+    } catch (_) { return { A: '', B: '' }; }
+  }
 
   // 6-character code: A-Z and 2-9 (no 0,O,1,I,L)
   var CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -63,24 +102,35 @@ var supabase = createClient(url, key);
     try { return sessionStorage.getItem(SESSION_CODE_KEY); } catch (_) { return null; }
   }
 
-  function getNamesFromDom() {
-    var a = document.getElementById('name-a');
-    var b = document.getElementById('name-b');
-    return { A: a ? a.value.trim() : '', B: b ? b.value.trim() : '' };
+  function getPartnerCountFromStorage() {
+    try {
+      var n = parseInt(sessionStorage.getItem(PARTNER_COUNT_KEY), 10);
+      return (n >= 2 && n <= 5) ? n : 2;
+    } catch (_) { return 2; }
   }
 
   function buildSessionPayload() {
-    var names = getNamesFromDom();
+    var names = getNamesFromStorage();
+    var count = getPartnerCountFromStorage();
     try {
-      var a = localStorage.getItem(STORAGE_ANSWERS_A);
-      var b = localStorage.getItem(STORAGE_ANSWERS_B);
-      var c = localStorage.getItem(STORAGE_CONTRACT);
-      return {
+      var payload = {
+        partner_count: count,
         partner_names: names,
-        answers_a: a ? JSON.parse(a) : {},
-        answers_b: b ? JSON.parse(b) : null,
-        contract: c ? JSON.parse(c) : {},
+        contract: localStorage.getItem(STORAGE_CONTRACT) ? JSON.parse(localStorage.getItem(STORAGE_CONTRACT)) : {},
+        values_relationships: localStorage.getItem(STORAGE_VALUES_RELATIONSHIPS) ? JSON.parse(localStorage.getItem(STORAGE_VALUES_RELATIONSHIPS)) : null,
       };
+      var ids = ['a', 'b', 'c', 'd', 'e'];
+      for (var i = 0; i < 5; i++) {
+        var key = ANSWER_KEYS[i];
+        var raw = localStorage.getItem(key);
+        payload['answers_' + ids[i]] = raw ? JSON.parse(raw) : (i < 2 ? (i === 0 ? {} : null) : null);
+      }
+      for (var j = 0; j < 5; j++) {
+        var vkey = VALUE_KEYS[j];
+        var vraw = localStorage.getItem(vkey);
+        payload['values_' + ids[j]] = vraw ? JSON.parse(vraw) : null;
+      }
+      return payload;
     } catch (_) { return null; }
   }
 
@@ -102,13 +152,23 @@ var supabase = createClient(url, key);
   }
 
   function sessionToLoadPayload(row) {
-    return {
-      version: 1,
+    var count = (row.partner_count >= 2 && row.partner_count <= 5) ? row.partner_count : 2;
+    var ids = ['A', 'B', 'C', 'D', 'E'];
+    var ansKeys = ['answers_a', 'answers_b', 'answers_c', 'answers_d', 'answers_e'];
+    var valKeys = ['values_a', 'values_b', 'values_c', 'values_d', 'values_e'];
+    var out = {
+      version: 2,
+      questionnaireVersion: row.questionnaire_version != null ? row.questionnaire_version : 1,
+      partnerCount: count,
       partnerNames: row.partner_names || { A: '', B: '' },
-      answersA: row.answers_a || {},
-      answersB: row.answers_b || {},
       contract: row.contract || {},
+      valuesRelationships: row.values_relationships || null,
     };
+    for (var i = 0; i < 5; i++) {
+      out['answers' + ids[i]] = row[ansKeys[i]] != null ? row[ansKeys[i]] : (i < 2 ? {} : null);
+      out['values' + ids[i]] = row[valKeys[i]] != null ? row[valKeys[i]] : null;
+    }
+    return out;
   }
 
   function loadIntoAppAndClose(payload) {
@@ -120,27 +180,42 @@ var supabase = createClient(url, key);
     window.location.reload();
   }
 
-  function switchFormToPartnerB() {
-    setTimeout(function () {
-      var r = document.querySelector('input[name="who"][value="B"]');
-      if (r) {
-        r.checked = true;
-        r.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    }, 150);
+  function getNextPartnerSlot(row) {
+    var ids = ['A', 'B', 'C', 'D', 'E'];
+    var keys = ['answers_a', 'answers_b', 'answers_c', 'answers_d', 'answers_e'];
+    var count = (row.partner_count >= 2 && row.partner_count <= 5) ? row.partner_count : 2;
+    for (var i = 1; i < count; i++) {
+      var data = row[keys[i]];
+      if (!data || Object.keys(data).length === 0) return ids[i];
+    }
+    return ids[count - 1];
   }
 
   function startNewSession() {
+    var countEl = document.getElementById('partner-count');
+    var count = (countEl && parseInt(countEl.value, 10)) || 2;
+    count = Math.min(5, Math.max(2, count));
+    try { sessionStorage.setItem(PARTNER_COUNT_KEY, String(count)); } catch (_) {}
     var id = crypto.randomUUID && crypto.randomUUID() || generateSimpleId();
     var code = generateCode();
     var qVersion = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
     var row = {
       id: id,
       code: code,
+      partner_count: count,
       partner_names: {},
       answers_a: {},
       answers_b: null,
+      answers_c: null,
+      answers_d: null,
+      answers_e: null,
       contract: {},
+      values_a: null,
+      values_b: null,
+      values_c: null,
+      values_d: null,
+      values_e: null,
+      values_relationships: null,
       questionnaire_version: qVersion,
     };
     supabase.from('sessions').insert(row).then(function (result) {
@@ -149,6 +224,7 @@ var supabase = createClient(url, key);
         return;
       }
       setCurrentSession(id, code);
+      setMyPartner('A');
       if (window.polyculeShowAppPage) window.polyculeShowAppPage();
     });
   }
@@ -203,41 +279,60 @@ var supabase = createClient(url, key);
 
   function handleFetchedSession(row) {
     if (window.polyculeShowAppPage) window.polyculeShowAppPage();
-    var hasA = row.answers_a && Object.keys(row.answers_a).length > 0;
-    var hasB = row.answers_b && Object.keys(row.answers_b).length > 0;
-    if (hasA && hasB) {
+    var count = (row.partner_count >= 2 && row.partner_count <= 5) ? row.partner_count : 2;
+    var ids = ['A', 'B', 'C', 'D', 'E'];
+    var keys = ['answers_a', 'answers_b', 'answers_c', 'answers_d', 'answers_e'];
+    var hasAll = true;
+    for (var i = 0; i < count; i++) {
+      var d = row[keys[i]];
+      if (!d || Object.keys(d).length === 0) { hasAll = false; break; }
+    }
+    if (hasAll) {
       setCurrentSession(row.id, row.code || null);
-      if (typeof window.polyculeLoadSessionFromData === 'function') {
-        window.polyculeLoadSessionFromData(sessionToLoadPayload(row));
-      }
-      hideSharedBanner();
-    } else if (hasA) {
-      setCurrentSession(row.id, row.code || null);
-      if (typeof window.polyculeLoadSessionFromData === 'function') {
-        window.polyculeLoadSessionFromData(sessionToLoadPayload(row));
-      }
-      switchFormToPartnerB();
+      var buttons = ids.slice(0, count).map(function (id) {
+        return '<button type="button" id="btn-i-am-' + id.toLowerCase() + '" class="shared-btn">I\'m Partner ' + id + '</button>';
+      }).join(' ');
       showSharedBanner(
-        '<p class="shared-msg">Partner A shared this. You\'re filling as Partner B.</p>' +
-        '<p class="shared-hint">Fill the questionnaire as Partner B, click Save this partner\'s answers, then click below.</p>' +
-        '<button type="button" id="btn-submit-partner-b" class="shared-btn">Save my answers to session</button> ' +
-        '<button type="button" id="btn-load-anyway" class="shared-btn secondary">Load into app (Partner A only)</button>'
+        '<p class="shared-msg">Who is opening this session?</p>' +
+        '<p class="shared-hint">Choose so we only show and save your answers.</p>' +
+        buttons
       );
-      document.getElementById('btn-submit-partner-b').onclick = function () {
-        savePartnerBToCloud(row.id);
-      };
-      document.getElementById('btn-load-anyway').onclick = function () {
-        loadIntoAppAndClose(sessionToLoadPayload(row));
-      };
+      ids.slice(0, count).forEach(function (id) {
+        var el = document.getElementById('btn-i-am-' + id.toLowerCase());
+        if (el) el.onclick = function () {
+          setMyPartner(id);
+          if (typeof window.polyculeLoadSessionFromData === 'function') {
+            window.polyculeLoadSessionFromData(sessionToLoadPayload(row));
+          }
+          hideSharedBanner();
+        };
+      });
     } else {
-      // Session is empty (Partner A created the code but hasn't filled yet). You entered the code = you're Partner B.
-      setCurrentSession(row.id, row.code);
-      switchFormToPartnerB();
-      showSharedBanner(
-        '<p class="shared-msg">Your partner created this session. You\'re Partner B.</p>' +
-        '<p class="shared-hint">Fill the questionnaire as Partner B, click Save this partner\'s answers, then click below.</p>' +
-        '<button type="button" id="btn-submit-partner-b" class="shared-btn">Save my answers to session</button>'
-      );
+      var nextSlot = getNextPartnerSlot(row);
+      setCurrentSession(row.id, row.code || null);
+      setMyPartner(nextSlot);
+      if (typeof window.polyculeLoadSessionFromData === 'function') {
+        window.polyculeLoadSessionFromData(sessionToLoadPayload(row));
+      }
+      var hasAny = keys.some(function (k, idx) { return idx < count && row[k] && Object.keys(row[k]).length > 0; });
+      if (hasAny) {
+        showSharedBanner(
+          '<p class="shared-msg">You\'re filling as Partner ' + nextSlot + '.</p>' +
+          '<p class="shared-hint">Fill the questionnaire, then click below to save your answers to the session.</p>' +
+          '<button type="button" id="btn-submit-partner-b" class="shared-btn">Save my answers to session</button> ' +
+          '<button type="button" id="btn-load-anyway" class="shared-btn secondary">I\'m Partner A (load only)</button>'
+        );
+        document.getElementById('btn-load-anyway').onclick = function () {
+          setMyPartner('A');
+          loadIntoAppAndClose(sessionToLoadPayload(row));
+        };
+      } else {
+        showSharedBanner(
+          '<p class="shared-msg">Your partner created this session. You\'re Partner ' + nextSlot + '.</p>' +
+          '<p class="shared-hint">Fill the questionnaire, then click below to save your answers to the session.</p>' +
+          '<button type="button" id="btn-submit-partner-b" class="shared-btn">Save my answers to session</button>'
+        );
+      }
       document.getElementById('btn-submit-partner-b').onclick = function () {
         savePartnerBToCloud(row.id);
       };
@@ -246,17 +341,27 @@ var supabase = createClient(url, key);
 
   function createShareLink() {
     var payload = buildSessionPayload();
-    if (!payload) payload = { partner_names: {}, answers_a: {}, answers_b: null, contract: {} };
+    if (!payload) payload = buildSessionPayload() || { partner_count: 2, partner_names: {}, answers_a: {}, answers_b: null, answers_c: null, answers_d: null, answers_e: null, contract: {}, values_a: null, values_b: null, values_c: null, values_d: null, values_e: null, values_relationships: null };
     var id = crypto.randomUUID && crypto.randomUUID() || generateSimpleId();
     var code = generateCode();
     var qVersion = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
     var row = {
       id: id,
       code: code,
+      partner_count: payload.partner_count || 2,
       partner_names: payload.partner_names || {},
       answers_a: payload.answers_a || {},
-      answers_b: payload.answers_b || null,
+      answers_b: payload.answers_b != null ? payload.answers_b : null,
+      answers_c: payload.answers_c != null ? payload.answers_c : null,
+      answers_d: payload.answers_d != null ? payload.answers_d : null,
+      answers_e: payload.answers_e != null ? payload.answers_e : null,
       contract: payload.contract || {},
+      values_a: payload.values_a,
+      values_b: payload.values_b,
+      values_c: payload.values_c,
+      values_d: payload.values_d,
+      values_e: payload.values_e,
+      values_relationships: payload.values_relationships || null,
       questionnaire_version: qVersion,
     };
     supabase.from('sessions').insert(row).then(function (result) {
@@ -265,6 +370,7 @@ var supabase = createClient(url, key);
         return;
       }
       setCurrentSession(id, code);
+      setMyPartner('A');
       showCodeInUI(code);
       var link = window.location.origin + (window.location.pathname || '') + '?s=' + id;
       var wrap = document.getElementById('cloud-link-wrap');
@@ -305,21 +411,25 @@ var supabase = createClient(url, key);
   }
 
   function savePartnerBToCloud(sessionId) {
-    var names = getNamesFromDom();
-    var answersB = null;
-    try {
-      var b = localStorage.getItem(STORAGE_ANSWERS_B);
-      answersB = b ? JSON.parse(b) : {};
-    } catch (_) {}
-    if (!answersB || Object.keys(answersB).length === 0) {
-      alert('Fill out the questionnaire as Partner B and click Save this partner\'s answers first.');
+    var names = getNamesFromStorage();
+    var me = getMyPartnerFromStorage();
+    if (me === 'A') {
+      alert('Partner A saves via the main session; use "Save to cloud" or the share link flow.');
       return;
     }
-    supabase.from('sessions').update({
-      partner_names: names,
-      answers_b: answersB,
-      updated_at: new Date().toISOString(),
-    }).eq('id', sessionId).then(function (result) {
+    var key = ANSWER_KEYS[['A', 'B', 'C', 'D', 'E'].indexOf(me)];
+    var answersMe = null;
+    try {
+      var raw = localStorage.getItem(key);
+      answersMe = raw ? JSON.parse(raw) : {};
+    } catch (_) {}
+    if (!answersMe || Object.keys(answersMe).length === 0) {
+      alert('Fill out the questionnaire and click Save this partner\'s answers first.');
+      return;
+    }
+    var update = { partner_names: names, updated_at: new Date().toISOString() };
+    update['answers_' + me.toLowerCase()] = answersMe;
+    supabase.from('sessions').update(update).eq('id', sessionId).then(function (result) {
       if (result.error) {
         alert('Could not save: ' + (result.error.message || ''));
         return;
@@ -333,10 +443,20 @@ var supabase = createClient(url, key);
     var payload = buildSessionPayload();
     if (!payload) return;
     supabase.from('sessions').update({
+      partner_count: payload.partner_count,
       partner_names: payload.partner_names,
       answers_a: payload.answers_a,
       answers_b: payload.answers_b,
+      answers_c: payload.answers_c,
+      answers_d: payload.answers_d,
+      answers_e: payload.answers_e,
       contract: payload.contract,
+      values_a: payload.values_a,
+      values_b: payload.values_b,
+      values_c: payload.values_c,
+      values_d: payload.values_d,
+      values_e: payload.values_e,
+      values_relationships: payload.values_relationships,
       updated_at: new Date().toISOString(),
     }).eq('id', sessionId).then(function (result) {
       if (result.error) console.warn('Cloud update failed', result.error);
@@ -395,6 +515,8 @@ var supabase = createClient(url, key);
   function initCodeBar() {
     var codeBar = document.getElementById('code-bar');
     if (codeBar) codeBar.style.display = 'flex';
+    var setupLocal = document.querySelector('.setup-local');
+    if (setupLocal) setupLocal.style.display = 'none';
     var startBtn = document.getElementById('btn-start-new');
     if (startBtn) startBtn.onclick = startNewSession;
     var codeInput = document.getElementById('code-input');

@@ -4,6 +4,17 @@ This document outlines a plan to support expanding the questionnaire from ~60 qu
 
 ---
 
+## Assumption: “Editing” a question = new question + deprecate old
+
+**When we change or “edit” a question, we do not edit it in place.** We:
+
+1. **Add a new question** with a new stable id (e.g. string id) and the new text/options.
+2. **Remove (deprecate) the old question** from the `QUESTIONS` array.
+
+So “edit question 5” means: add a new question (new id), delete the old one. Old answers for the deprecated question remain in stored data but are no longer shown; the new question appears blank until users answer it. This avoids showing old answers under reworded questions. **Assume this whenever question changes are requested.**
+
+---
+
 ## 1. Current State (Summary)
 
 | Area | How it works today |
@@ -117,6 +128,8 @@ This document outlines a plan to support expanding the questionnaire from ~60 qu
 - After a batch of changes, consider bumping `QUESTIONNAIRE_VERSION` in `data.js` and documenting what changed (e.g. in this file under a “Version history” note).
 
 ---
+
+**Existing sessions and new questions:** Users who started a session before you added questions still see their data; new questions appear blank. The app shows a dismissible banner when the session was created with an older questionnaire version so they know they can fill the new ones.
 
 ## 6. Checklist for Adding New Questions Later
 
