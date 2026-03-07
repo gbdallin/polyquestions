@@ -255,16 +255,10 @@
     const names = getNames();
     const labelA = names.A || 'Partner A';
     const labelB = names.B || 'Partner B';
-    const answers = getAnswers();
-    const contract = getContract();
-
-    if (!Object.keys(answers.A).length && !Object.keys(answers.B).length) {
-      container.innerHTML = '<p class="contract-empty">Fill out the questionnaire for both partners and use Compare first, then build your contract here.</p>';
-      if (recommendBar) recommendBar.style.display = 'none';
-      var docEl = document.getElementById('contract-doc');
-      if (docEl) docEl.style.display = 'none';
-      return;
-    }
+    var answers = getAnswers();
+    answers.A = answers.A || {};
+    answers.B = answers.B || {};
+    var contract = getContract();
 
     function sectionHasAnyAnswer(questions, ansA, ansB) {
       for (var i = 0; i < questions.length; i++) {
