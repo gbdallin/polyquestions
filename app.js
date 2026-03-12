@@ -807,7 +807,36 @@
     if (window.polyculeShowSetupPage) window.polyculeShowSetupPage();
   }
 
+  function clearQuestion10ForV2Upgrade() {
+    var currentVersion = typeof QUESTIONNAIRE_VERSION !== 'undefined' ? QUESTIONNAIRE_VERSION : 1;
+    var storedVersion = null;
+    try {
+      var v = sessionStorage.getItem(SESSION_QUESTIONNAIRE_VERSION_KEY);
+      if (v != null) storedVersion = parseInt(v, 10);
+      if (storedVersion == null) {
+        v = localStorage.getItem(SAVED_QUESTIONNAIRE_VERSION_KEY);
+        if (v != null) storedVersion = parseInt(v, 10);
+      }
+      if (storedVersion == null || isNaN(storedVersion)) storedVersion = 1;
+    } catch (_) { storedVersion = 1; }
+    if (currentVersion < 2 || storedVersion >= 2) return;
+    var ids = getPartnerIds();
+    ids.forEach(function (id) {
+      var key = ANSWERS_KEYS[id];
+      if (!key) return;
+      try {
+        var raw = localStorage.getItem(key);
+        var data = raw ? JSON.parse(raw) : {};
+        if (data.q10 != null) {
+          delete data.q10;
+          localStorage.setItem(key, JSON.stringify(data));
+        }
+      } catch (_) {}
+    });
+  }
+
   function init() {
+    clearQuestion10ForV2Upgrade();
     formData = getAnswers();
     currentPartner = getMyPartner();
     renderForm();

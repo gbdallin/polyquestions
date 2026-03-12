@@ -3,7 +3,7 @@
 // Exposed globally for app.js (open index.html in browser, no server).
 // Bump QUESTIONNAIRE_VERSION when adding sections/questions or changing structure; see FUTURE-PROOFING.md.
 
-var QUESTIONNAIRE_VERSION = 1;
+var QUESTIONNAIRE_VERSION = 2;
 
 var SECTIONS = [
   { id: 'money', label: 'Money' },
@@ -34,7 +34,7 @@ var QUESTIONS = [
   { id: 7, section: 'structure', text: 'Do you wish to become married civilly?', type: 'choice', options: ['Yes (commitment ceremony / non-legal marriage)', 'No', 'It depends'] },
   { id: 8, section: 'children', text: 'Do you wish to have more children?', type: 'choice', options: ['Yes', 'No', 'Unsure', 'Not applicable'] },
   { id: 9, section: 'children', text: 'Do you wish to raise children with your partner(s)?', type: 'choice', options: ['Yes', 'No', 'With some partners only', 'Unsure'] },
-  { id: 10, section: 'children', text: 'Do you wish to coparent your partner\'s kids?', type: 'choice', options: ['Yes', 'No', 'In a limited role (e.g., occasional care)', 'It depends on the situation'] },
+  { id: 10, section: 'children', text: 'Would you be open to helping raise other people\'s kids (e.g., a partner\'s children)?', type: 'choice', options: ['Yes, I\'d like to be involved', "It's my intention to", 'Yes, in a supporting role only', 'Maybe, in a limited role (e.g., occasional care)', 'Maybe, it depends on the situation', 'Prefer not to', 'No, that\'s not for me', 'Other'] },
   { id: 11, section: 'sex', text: 'At what frequency do you need sex?', type: 'choice', options: ['Daily', 'Several times a week', 'Weekly', 'A few times a month', 'Monthly or less', 'Quality matters more than frequency', 'Other'] },
   { id: 12, section: 'sex', text: 'Do you require condoms with new partners?', type: 'choice', options: ['Yes, always', 'Until STI testing / conversation', 'No', 'Other'] },
   { id: 13, section: 'sex', text: 'Do you think your partner should disclose sexual relations had outside of the polycule?', type: 'choice', options: ['Yes, before it happens', 'Yes, after', 'Yes, only if it affects risk (e.g., barrier use)', 'No', 'Other'] },
