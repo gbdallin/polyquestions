@@ -331,14 +331,18 @@
       var name = getAnswerKey(q);
       var existing = formData[currentPartner][name];
       if (q.type === 'text') {
-        html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><textarea name="' + name + '" data-qid="' + q.id + '" placeholder="' + escapeHtml(q.placeholder || '') + '">' + escapeHtml(existing && existing.value ? existing.value : '') + '</textarea><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Notes (optional)" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
+        html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><textarea name="' + name + '" data-qid="' + q.id + '" placeholder="' + escapeHtml(q.placeholder || '') + '">' + escapeHtml(existing && existing.value ? existing.value : '') + '</textarea><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Optional: add context or nuance" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
       } else {
-        html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><div class="options">';
+        var hasOther = q.options.indexOf('Other') >= 0;
+        html += '<div class="q-block"><label class="q-text">' + q.id + '. ' + escapeHtml(q.text) + '</label><p class="q-hint choice-hint">Select one option; add optional detail below.</p><div class="options">';
         q.options.forEach(function (opt) {
           var checked = existing && existing.value === opt ? ' checked' : '';
           html += '<label><input type="radio" name="' + name + '" value="' + escapeHtml(opt) + '"' + checked + ' /> ' + escapeHtml(opt) + '</label>';
+          if (opt === 'Other') {
+            html += ' <input type="text" name="' + name + '_other" class="other-specify" placeholder="Please specify" value="' + escapeHtml(existing && existing.otherText ? existing.otherText : '') + '" />';
+          }
         });
-        html += '</div><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Notes (optional)" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
+        html += '</div><div class="notes"><input type="text" name="' + name + '_notes" placeholder="Optional: add context or nuance to your answer" value="' + escapeHtml(existing && existing.notes ? existing.notes : '') + '" /></div></div>';
       }
     });
     if (lastSection) html += '</div>';
@@ -357,7 +361,12 @@
       } else {
         const radio = container.querySelector(`input[name="${name}"]:checked`);
         const notesEl = container.querySelector(`input[name="${name}_notes"]`);
-        data[name] = { value: radio ? radio.value : '', notes: notesEl ? notesEl.value.trim() : '' };
+        const otherEl = container.querySelector(`input[name="${name}_other"]`);
+        data[name] = {
+          value: radio ? radio.value : '',
+          notes: notesEl ? notesEl.value.trim() : '',
+          otherText: (radio && radio.value === 'Other' && otherEl) ? otherEl.value.trim() : ''
+        };
       }
     });
     return data;
@@ -390,6 +399,7 @@
         var val = answers[id][name];
         var v = val && val.value !== undefined ? val.value : val;
         var display = typeof v === 'object' ? (v && v.value || '—') : (v || '—');
+        if (val && typeof val === 'object' && val.value === 'Other' && val.otherText) display = 'Other: ' + val.otherText;
         return '<td class="answer">' + escapeHtml(String(display)) + '</td>';
       }).join('');
       html += '<tr><th>' + escapeHtml(q.text) + '</th>' + cells + '</tr>';
@@ -599,8 +609,11 @@
       questions.forEach(function (q) {
         var name = getAnswerKey(q);
         var partnerCells = ids.map(function (id) {
-          var v = answers[id] && (answers[id][name] && answers[id][name].value !== undefined ? answers[id][name].value : answers[id][name]);
+          var raw = answers[id] && answers[id][name];
+          var v = raw && raw.value !== undefined ? raw.value : raw;
           var ans = typeof v === 'object' ? (v && v.value) : v;
+          if (raw && raw.value === 'Other' && raw.otherText) ans = 'Other: ' + raw.otherText;
+          else if (ans === 'Other' && raw && raw.otherText) ans = 'Other: ' + raw.otherText;
           if (!ans) ans = '—';
           var label = names[id] || 'Partner ' + id;
           return '<span class="contract-qa-partner"><span class="qa-label">' + escapeHtml(label) + '</span>' + escapeHtml(String(ans)) + '</span>';
@@ -874,6 +887,25 @@
           sessionStorage.setItem(MY_PARTNER_KEY, 'A');
         } catch (_) {}
         window.location.reload();
+      });
+    }
+
+    var partnerCountBtns = document.querySelectorAll('.partner-count-btn');
+    if (partnerCountBtns.length) {
+      var currentCount = getPartnerCount();
+      partnerCountBtns.forEach(function (btn) {
+        var val = parseInt(btn.getAttribute('data-value'), 10);
+        btn.classList.toggle('selected', val === currentCount);
+        btn.setAttribute('aria-pressed', val === currentCount ? 'true' : 'false');
+        btn.addEventListener('click', function () {
+          var n = parseInt(btn.getAttribute('data-value'), 10);
+          setPartnerCount(n);
+          partnerCountBtns.forEach(function (b) {
+            var v = parseInt(b.getAttribute('data-value'), 10);
+            b.classList.toggle('selected', v === n);
+            b.setAttribute('aria-pressed', v === n ? 'true' : 'false');
+          });
+        });
       });
     }
 

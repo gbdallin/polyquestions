@@ -124,6 +124,8 @@
       cursor: pointer;
     }
     .q-block .options input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; }
+    .q-block .q-hint { font-size: 0.85rem; color: var(--muted); margin: -0.2rem 0 0.4rem 0; font-weight: 400; }
+    .q-block .options .other-specify { margin-top: 0.25rem; margin-left: 0.1rem; width: 100%; max-width: 24rem; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.9rem; }
     .q-block textarea {
       width: 100%;
       min-height: 80px;
@@ -220,7 +222,10 @@
     }
     .compare-table .section-row td:first-child { padding-left: 0.75rem; }
     .compare-empty { text-align: center; padding: 3rem; color: var(--muted); }
-    .contract-intro { margin-bottom: 1.5rem; color: var(--muted); font-size: 0.95rem; }
+    .contract-intro-block { margin-bottom: 1.5rem; }
+    .contract-intro { margin-bottom: 0.75rem; color: var(--text); font-size: 0.95rem; line-height: 1.5; }
+    .contract-intro strong { color: var(--accent); }
+    .contract-intro-secondary { color: var(--muted); font-size: 0.9rem; margin: 0; }
     .contract-section {
       margin-bottom: 1.5rem;
       padding: 1rem;
@@ -477,7 +482,10 @@
     .setup-local .shared-btn { padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); font-family: var(--font-sans); font-size: 1rem; cursor: pointer; }
     .setup-local .shared-btn:hover { filter: brightness(1.1); }
     .setup-option { margin-bottom: 0.75rem; }
-    .setup-option select { margin-left: 0.35rem; padding: 0.25rem 0.5rem; }
+    .partner-count-btns { display: inline-flex; gap: 0.5rem; margin-left: 0.35rem; vertical-align: middle; }
+    .partner-count-btn { padding: 0.4rem 0.9rem; font-family: var(--font-sans); font-size: 0.95rem; font-weight: 500; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+    .partner-count-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .partner-count-btn.selected { background: var(--accent); color: var(--bg); border-color: var(--accent); }
     #session-strip button {
       padding: 0.4rem 0.75rem;
       background: var(--surface);
@@ -537,7 +545,7 @@
       <h1>Polycule Expectations</h1>
       <p class="subtitle">Questionnaire → Compare → Relationship contract. Stored online—start or join a session to continue.</p>
       <div id="code-bar" style="display:none;">
-        <p class="setup-option"><label>Number of partners in this polycule: <select id="partner-count"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label></p>
+        <p class="setup-option">Number of partners in this polycule: <span id="partner-count-wrap" class="partner-count-btns" role="group" aria-label="Number of partners"><button type="button" class="partner-count-btn selected" data-value="2" aria-pressed="true">2</button><button type="button" class="partner-count-btn" data-value="3" aria-pressed="false">3</button><button type="button" class="partner-count-btn" data-value="4" aria-pressed="false">4</button><button type="button" class="partner-count-btn" data-value="5" aria-pressed="false">5</button></span></p>
         <button type="button" id="btn-start-new">Start new (get code)</button>
         <span class="code-enter-label">or enter code:</span>
         <input type="text" id="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" />
@@ -609,7 +617,10 @@
       <div id="compare-content"></div>
     </div>
     <div id="view-contract" class="view">
-      <p class="contract-intro">The written agreement is generated from your answers. Each section shows a recommendation based on how aligned your answers are; you can add notes or change the framing. Then copy or print the draft.</p>
+      <div class="contract-intro-block">
+        <p class="contract-intro">This page turns your <strong>needs</strong> (what you each said in the questionnaire) into a draft of <strong>expectations</strong> you can both stand behind. The goal isn’t to agree on every single need—no one partner can meet all of another person’s needs, and that’s okay. Some needs may be met in this relationship, some elsewhere, and some you’ll keep talking about.</p>
+        <p class="contract-intro-secondary">Each section below shows your answers and a suggestion. You can choose a framing (fulfill together, some may be met elsewhere, or keep talking), add notes, and copy or print the draft when you’re ready.</p>
+      </div>
       <div id="contract-content"></div>
       <div class="export-bar">
         <button type="button" id="btn-export-txt" class="primary">Copy contract to clipboard</button>

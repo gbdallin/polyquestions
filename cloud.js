@@ -192,8 +192,8 @@ var supabase = createClient(url, key);
   }
 
   function startNewSession() {
-    var countEl = document.getElementById('partner-count');
-    var count = (countEl && parseInt(countEl.value, 10)) || 2;
+    var sel = document.querySelector('.partner-count-btn.selected');
+    var count = (sel && parseInt(sel.getAttribute('data-value'), 10)) || 2;
     count = Math.min(5, Math.max(2, count));
     try { sessionStorage.setItem(PARTNER_COUNT_KEY, String(count)); } catch (_) {}
     var id = crypto.randomUUID && crypto.randomUUID() || generateSimpleId();

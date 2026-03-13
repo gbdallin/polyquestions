@@ -25,8 +25,11 @@ var AgreementGenerator = (function () {
 
   function normalize(val) {
     if (val == null) return '';
-    var v = typeof val === 'object' ? val.value : val;
-    return String(v).trim();
+    if (typeof val === 'object') {
+      if (val.value === 'Other' && val.otherText) return ('Other: ' + String(val.otherText)).trim();
+      return String(val.value != null ? val.value : '').trim();
+    }
+    return String(val).trim();
   }
 
   function areOpposite(a, b) {
@@ -120,18 +123,10 @@ var AgreementGenerator = (function () {
 
   /**
    * Generate longform recommendation text for a section (for the contract builder UI).
-   * @param {string} sectionLabel - e.g. "Money"
-   * @param {Array} questions - QUESTIONS in this section
-   * @param {Object} answersA - map of q1, q2, ... to { value, notes }
-   * @param {Object} answersB - same
-   * @param {'together'|'elsewhere'|'discuss'} agreementType
-   * @param {string} labelA - display name for partner A
-   * @param {string} labelB - display name for partner B
-   * @returns {string} Paragraph(s) of recommendation prose
+   * Aligned with relationship-negotiator rule: in-depth, kind, normalizing differences,
+   * guiding toward conversation and realistic expectations.
    */
   function getRecommendationLongform(sectionLabel, questions, answersA, answersB, agreementType, labelA, labelB) {
-    var summaryA = summaryForPartner(answersA, questions);
-    var summaryB = summaryForPartner(answersB, questions);
     var sameCount = 0, oppositeCount = 0, total = 0;
     questions.forEach(function (q) {
       var name = getAnswerKey(q);
@@ -145,25 +140,25 @@ var AgreementGenerator = (function () {
 
     var intro = '';
     if (total === 0) {
-      intro = 'Neither of you has answered the questions in this section yet. ';
+      intro = 'Neither of you has answered the questions in this section yet. When you do, this section will suggest how to turn your answers into a shared expectation. There’s no rush—the point is to have a real conversation, not to check every box.';
     } else if (oppositeCount > 0) {
-      intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' show some clear differences. ';
+      intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' show some clear differences. That’s normal and workable. Differences are a starting point for conversation, not a failure. The goal is to hear each other and decide what you can realistically expect from this relationship—and what might be met elsewhere or revisited later.';
     } else if (sameCount === total) {
-      intro = 'You and ' + labelB + ' are aligned here: you both indicated similar expectations. ';
+      intro = 'You and ' + labelB + ' are aligned here: you both indicated similar expectations. That’s a strong base. You can still use the notes below to add any specifics or caveats so the agreement feels accurate to you both.';
     } else {
-      intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' are partly aligned. ';
+      intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' are partly aligned. Some overlap, some don’t. That’s common. The next step is to name what you each need, listen to what’s underneath the preferences, and decide what you can expect from each other in this relationship.';
     }
 
     var recommendation = '';
     if (agreementType === 'together') {
-      recommendation = 'We recommend stating that you intend to meet these ' + sectionLabel.toLowerCase() + ' needs and expectations together within this relationship. You can add specifics or caveats in the notes below.';
+      recommendation = 'We recommend stating that you intend to meet these ' + sectionLabel.toLowerCase() + ' needs and expectations together within this relationship. Use the notes below to add any specifics or limits so the draft reflects what you’ve actually agreed.';
     } else if (agreementType === 'elsewhere') {
-      recommendation = 'We recommend acknowledging these needs and stating that you are open to some of them being met in other relationships, with your support for each other. Add any boundaries or specifics in the notes below.';
+      recommendation = 'We recommend acknowledging these needs and stating that you’re open to some of them being met in other relationships, with your support for each other. No one partner has to meet every need—that’s part of polyamory. Use the notes below to add any boundaries or specifics you’ve discussed.';
     } else {
-      recommendation = 'We recommend keeping this area under ongoing conversation and explicitly agreeing to revisit your expectations as your situation or feelings change. Use the notes below to record what you\'ve already discussed or decided.';
+      recommendation = 'We recommend keeping this area under ongoing conversation. That doesn’t mean you’ve failed; it means you’re being honest. Try to talk about what’s underneath your answers—what you’re hoping for, what you’re afraid of, what “good” would look like for each of you. You don’t have to agree on everything. Decide one small thing you can expect from each other for now, or agree to revisit in a few weeks or months. Use the notes below to record what you’ve already discussed or decided.';
     }
 
-    return intro + recommendation;
+    return intro + ' ' + recommendation;
   }
 
   /**
@@ -198,7 +193,7 @@ var AgreementGenerator = (function () {
     var lines = [];
     lines.push('RELATIONSHIP AGREEMENT (DRAFT)');
     lines.push('');
-    lines.push('This agreement is between ' + labelA + ' and ' + labelB + '. It reflects our stated needs from the expectations questionnaire and our intentions for how we will meet them in this relationship. We may update this document by mutual conversation.');
+    lines.push('This agreement is between ' + labelA + ' and ' + labelB + '. It reflects our stated needs from the expectations questionnaire and our intentions for how we will meet them. We don’t expect one partner to meet every need—some we’ll fulfill together, some may be met elsewhere, and some we’ll keep talking about. We may update this document by mutual conversation.');
     lines.push('');
 
     // Values / commitment (Q50) – pull out for a definitions-style paragraph if both answered
