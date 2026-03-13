@@ -163,18 +163,79 @@ var AgreementGenerator = (function () {
 
   /**
    * Generate prose for one section.
-   * notes: optional notes or decisions for this section (included in agreement).
+   * Produces contract-ready, narrative text instead of re-listing every answer.
+   * notes / discussionOutcome: optional notes or decisions for this section (included in agreement).
    */
   function generateSectionProse(sec, labelA, labelB, answersA, answersB, agreementType, notes, questions, discussionOutcome) {
-    var summaryA = summaryForPartner(answersA, questions);
-    var summaryB = summaryForPartner(answersB, questions);
+    var total = 0;
+    var aligned = [];
+    var complementary = [];
+    var opposed = [];
+
+    questions.forEach(function (q) {
+      var name = getAnswerKey(q);
+      var a = answersA[name];
+      var b = answersB[name];
+      var va = a && (a.value !== undefined ? a.value : a);
+      var vb = b && (b.value !== undefined ? b.value : b);
+      var na = normalize(va);
+      var nb = normalize(vb);
+      if (!na && !nb) return;
+      total++;
+      if (areSame(va, vb)) {
+        aligned.push({ question: q, valueA: na, valueB: nb });
+      } else if (areOpposite(va, vb)) {
+        opposed.push({ question: q, valueA: na, valueB: nb });
+      } else if (na && nb) {
+        complementary.push({ question: q, valueA: na, valueB: nb });
+      }
+    });
+
     var lines = [];
     lines.push(sec.label + '.');
-    if (summaryA) lines.push(labelA + ' indicated: ' + summaryA);
-    if (summaryB) lines.push(labelB + ' indicated: ' + summaryB);
+
+    if (total === 0) {
+      lines.push('At the time of writing, we have not yet defined specific expectations in this area. We agree that this topic matters and will return to it in future conversations as our relationship and needs evolve.');
+    } else {
+      if (aligned.length) {
+        var alignedSentences = aligned.map(function (item) {
+          var desc = item.question.text;
+          var v = item.valueA || item.valueB;
+          return 'on “‘' + desc + '” we are on the same page (for example: “‘' + v + '”').replace(/\s+/g, ' ').trim() + ').';
+        });
+        lines.push('In this area, we are clearly aligned on several points: ' + alignedSentences.join(' '));
+      } else {
+        lines.push('In this area, we do not see many perfectly matching answers, which is still workable—our answers are information about what matters to each of us.');
+      }
+
+      if (complementary.length) {
+        var compSentences = complementary.map(function (item) {
+          return 'on “‘' + item.question.text + '” ' + labelA + ' leans toward “‘' + item.valueA + '” while ' + labelB + ' leans toward “‘' + item.valueB + '”; we treat this as a place to experiment and adjust over time.';
+        });
+        lines.push('We also notice areas where our preferences could complement each other rather than clash: ' + compSentences.join(' '));
+      }
+
+      if (opposed.length) {
+        var oppSentences = opposed.map(function (item) {
+          return 'on “‘' + item.question.text + '” ' + labelA + ' chose “‘' + item.valueA + '” and ' + labelB + ' chose “‘' + item.valueB + '”, which we treat as a real tension rather than something to paper over.';
+        });
+        lines.push('There are a few places where our answers pull in opposite directions. ' + oppSentences.join(' ') + ' We agree that not every need here has to be met inside this relationship; some may be better supported by other relationships, community, or individual work, while we stay in conversation about what feels safe and sustainable for both of us.');
+      }
+
+      if (!aligned.length && !complementary.length && !opposed.length) {
+        lines.push('In this area, our answers are mixed. We have taken time to hear the needs and hopes underneath our preferences and to name what feels essential versus what could be flexible for each of us.');
+      }
+    }
+
+    // State the high-level commitment for this section based on the chosen agreement type.
     lines.push(agreementSentence(agreementType, sec.label));
+
+    // Include any concrete decisions, boundaries, or examples the partners recorded.
     var sectionNote = (notes || '').trim() || (discussionOutcome || '').trim();
-    if (sectionNote) lines.push('Note: ' + sectionNote);
+    if (sectionNote) {
+      lines.push('For this section, we further agree that: ' + sectionNote);
+    }
+
     return lines.join(' ');
   }
 
