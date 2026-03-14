@@ -155,7 +155,7 @@ var AgreementGenerator = (function () {
     } else if (agreementType === 'elsewhere') {
       recommendation = 'We recommend acknowledging these needs and stating that you’re open to some of them being met in other relationships, with your support for each other. No one partner has to meet every need—that’s part of polyamory. Use the notes below to add any boundaries or specifics you’ve discussed.';
     } else {
-      recommendation = 'We recommend keeping this area under ongoing conversation. That doesn’t mean you’ve failed; it means you’re being honest. Try to talk about what’s underneath your answers—what you’re hoping for, what you’re afraid of, what “good” would look like for each of you. You don’t have to agree on everything. Decide one small thing you can expect from each other for now, or agree to revisit in a few weeks or months. Use the notes below to record what you’ve already discussed or decided.';
+      recommendation = 'We recommend keeping this area under ongoing conversation. That doesn’t mean you’ve failed; it means you’re being honest. Try to talk about what’s underneath your answers—what you’re hoping for, what you’re afraid of, what "good" would look like for each of you. You don’t have to agree on everything. Decide one small thing you can expect from each other for now, or agree to revisit in a few weeks or months. Use the notes below to record what you’ve already discussed or decided.';
     }
 
     return intro + ' ' + recommendation;
@@ -199,9 +199,10 @@ var AgreementGenerator = (function () {
     } else {
       if (aligned.length) {
         var alignedSentences = aligned.map(function (item) {
-          var desc = item.question.text;
+          var desc = (item.question && item.question.text) ? item.question.text : '';
           var v = item.valueA || item.valueB;
-          return 'on “‘' + desc + '” we are on the same page (for example: “‘' + v + '”').replace(/\s+/g, ' ').trim() + ').';
+          var s = 'on "' + desc + '" we are on the same page (for example: "' + v + '").';
+          return s.replace(/\s+/g, ' ').trim();
         });
         lines.push('In this area, we are clearly aligned on several points: ' + alignedSentences.join(' '));
       } else {
@@ -210,14 +211,16 @@ var AgreementGenerator = (function () {
 
       if (complementary.length) {
         var compSentences = complementary.map(function (item) {
-          return 'on “‘' + item.question.text + '” ' + labelA + ' leans toward “‘' + item.valueA + '” while ' + labelB + ' leans toward “‘' + item.valueB + '”; we treat this as a place to experiment and adjust over time.';
+          var qt = (item.question && item.question.text) ? item.question.text : '';
+          return 'on "' + qt + '" ' + labelA + ' leans toward "' + item.valueA + '" while ' + labelB + ' leans toward "' + item.valueB + '"; we treat this as a place to experiment and adjust over time.';
         });
         lines.push('We also notice areas where our preferences could complement each other rather than clash: ' + compSentences.join(' '));
       }
 
       if (opposed.length) {
         var oppSentences = opposed.map(function (item) {
-          return 'on “‘' + item.question.text + '” ' + labelA + ' chose “‘' + item.valueA + '” and ' + labelB + ' chose “‘' + item.valueB + '”, which we treat as a real tension rather than something to paper over.';
+          var qt = (item.question && item.question.text) ? item.question.text : '';
+          return 'on "' + qt + '" ' + labelA + ' chose "' + item.valueA + '" and ' + labelB + ' chose "' + item.valueB + '", which we treat as a real tension rather than something to paper over.';
         });
         lines.push('There are a few places where our answers pull in opposite directions. ' + oppSentences.join(' ') + ' We agree that not every need here has to be met inside this relationship; some may be better supported by other relationships, community, or individual work, while we stay in conversation about what feels safe and sustainable for both of us.');
       }

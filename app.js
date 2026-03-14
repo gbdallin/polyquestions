@@ -533,6 +533,45 @@
     return 'Needs more discussion';
   }
 
+  /** Fallback synopsis when agreement-generator.js is not available (e.g. script load error). */
+  function fallbackRecommendationLongform(sectionLabel, questions, answersA, answersB, agreementType, labelA, labelB) {
+    var OPPOSITES = [['Yes', 'No'], ['Full time', 'Not at all'], ['Not at all', 'Full time'], ['Yes, always', 'No'], ['Yes, before it happens', 'No'], ['Yes, ideally', 'Prefer not to'], ['Prefer not to', 'Yes, ideally'], ['Very; I want kitchen table poly', 'Not necessary; parallel is fine'], ['Not necessary; parallel is fine', 'Very; I want kitchen table poly'], ['Yes, written', 'Prefer to keep things flexible'], ['Prefer to keep things flexible', 'Yes, written'], ['Yes', 'No one'], ['No one', 'Yes']];
+    function norm(v) {
+      if (v == null) return '';
+      if (typeof v === 'object') {
+        if (v.value === 'Other' && v.otherText) return ('Other: ' + String(v.otherText)).trim();
+        return String(v.value != null ? v.value : '').trim();
+      }
+      return String(v).trim();
+    }
+    function same(a, b) { return norm(a) === norm(b); }
+    function opp(a, b) {
+      var x = norm(a), y = norm(b);
+      if (!x || !y) return false;
+      return OPPOSITES.some(function (p) { return (p[0] === x && p[1] === y) || (p[1] === x && p[0] === y); });
+    }
+    var sameCount = 0, oppositeCount = 0, total = 0;
+    questions.forEach(function (q) {
+      var name = getAnswerKey(q);
+      var va = answersA[name] && (answersA[name].value !== undefined ? answersA[name].value : answersA[name]);
+      var vb = answersB[name] && (answersB[name].value !== undefined ? answersB[name].value : answersB[name]);
+      if (norm(va) === '' && norm(vb) === '') return;
+      total++;
+      if (same(va, vb)) sameCount++;
+      else if (opp(va, vb)) oppositeCount++;
+    });
+    var intro = '';
+    if (total === 0) intro = 'Neither of you has answered the questions in this section yet. When you do, this section will suggest how to turn your answers into a shared expectation. There\'s no rush—the point is to have a real conversation, not to check every box.';
+    else if (oppositeCount > 0) intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' show some clear differences. That\'s normal and workable. Differences are a starting point for conversation, not a failure. The goal is to hear each other and decide what you can realistically expect from this relationship—and what might be met elsewhere or revisited later.';
+    else if (sameCount === total) intro = 'You and ' + labelB + ' are aligned here: you both indicated similar expectations. That\'s a strong base. You can still use the notes below to add any specifics or caveats so the agreement feels accurate to you both.';
+    else intro = 'Your answers in ' + sectionLabel.toLowerCase() + ' are partly aligned. Some overlap, some don\'t. That\'s common. The next step is to name what you each need, listen to what\'s underneath the preferences, and decide what you can expect from each other in this relationship.';
+    var recommendation = '';
+    if (agreementType === 'together') recommendation = 'We recommend stating that you intend to meet these ' + sectionLabel.toLowerCase() + ' needs and expectations together within this relationship. Use the notes below to add any specifics or limits so the draft reflects what you\'ve actually agreed.';
+    else if (agreementType === 'elsewhere') recommendation = 'We recommend acknowledging these needs and stating that you\'re open to some of them being met in other relationships, with your support for each other. No one partner has to meet every need—that\'s part of polyamory. Use the notes below to add any boundaries or specifics you\'ve discussed.';
+    else recommendation = 'We recommend keeping this area under ongoing conversation. That doesn\'t mean you\'ve failed; it means you\'re being honest. Try to talk about what\'s underneath your answers—what you\'re hoping for, what you\'re afraid of, what "good" would look like for each of you. You don\'t have to agree on everything. Decide one small thing you can expect from each other for now, or agree to revisit in a few weeks or months. Use the notes below to record what you\'ve already discussed or decided.';
+    return intro + ' ' + recommendation;
+  }
+
   function renderContract() {
     var container = document.getElementById('contract-content');
     var names = getNames();
@@ -556,9 +595,9 @@
     if (ids.length === 2 && typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendations) {
       recommendations = AgreementGenerator.getRecommendations(answers.A || {}, answers.B || {});
     }
-    var getLongform = typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendationLongform
+    var getLongform = (typeof AgreementGenerator !== 'undefined' && AgreementGenerator.getRecommendationLongform)
       ? AgreementGenerator.getRecommendationLongform
-      : function () { return ''; };
+      : fallbackRecommendationLongform;
 
     var sectionLabels = {};
     SECTIONS.forEach(function (sec) { sectionLabels[sec.id] = sec.label; });
